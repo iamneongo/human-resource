@@ -4,14 +4,66 @@ import { revalidatePath } from 'next/cache';
 import { desc, eq, ilike, or } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { departments, employees, positions } from '@/db/schema';
+import { contracts, departments, employeeProfiles, employees, positions } from '@/db/schema';
 import { requireRole } from '@/lib/rbac';
 
 import { employeeFormSchema, type EmployeeFormValues } from './schema';
 
-export type ActionResult<T = void> =
-  | { ok: true; data: T }
-  | { ok: false; error: string };
+/** Chi tiết 1 nhân viên: hồ sơ + phòng ban/chức vụ + hợp đồng. */
+export async function getEmployeeDetail(id: string) {
+  await requireRole('manager');
+  const [emp] = await db
+    .select({
+      id: employees.id,
+      employeeCode: employees.employeeCode,
+      fullName: employees.fullName,
+      dateOfBirth: employees.dateOfBirth,
+      gender: employees.gender,
+      soCccd: employees.soCccd,
+      phone: employees.phone,
+      email: employees.email,
+      status: employees.status,
+      hireDate: employees.hireDate,
+      seniorityDate: employees.seniorityDate,
+      probationEndDate: employees.probationEndDate,
+      resignDate: employees.resignDate,
+      resignReason: employees.resignReason,
+      departmentName: departments.name,
+      positionTitle: positions.title,
+      birthPlace: employeeProfiles.birthPlace,
+      cccdIssueDate: employeeProfiles.cccdIssueDate,
+      cccdIssuePlace: employeeProfiles.cccdIssuePlace,
+      nationality: employeeProfiles.nationality,
+      permanentAddress: employeeProfiles.permanentAddress,
+      educationLevel: employeeProfiles.educationLevel,
+      major: employeeProfiles.major,
+      jobTitle: employeeProfiles.jobTitle
+    })
+    .from(employees)
+    .leftJoin(departments, eq(employees.departmentId, departments.id))
+    .leftJoin(positions, eq(employees.positionId, positions.id))
+    .leftJoin(employeeProfiles, eq(employeeProfiles.employeeId, employees.id))
+    .where(eq(employees.id, id))
+    .limit(1);
+  if (!emp) return null;
+
+  const contractRows = await db
+    .select({
+      id: contracts.id,
+      type: contracts.type,
+      contractNumber: contracts.contractNumber,
+      startDate: contracts.startDate,
+      endDate: contracts.endDate,
+      status: contracts.status
+    })
+    .from(contracts)
+    .where(eq(contracts.employeeId, id))
+    .orderBy(desc(contracts.startDate));
+
+  return { emp, contracts: contractRows };
+}
+
+export type ActionResult<T = void> = { ok: true; data: T } | { ok: false; error: string };
 
 /** Danh sách nhân viên (kèm phòng ban / chức vụ) cho bảng. */
 export async function listEmployees(search?: string) {
@@ -34,10 +86,7 @@ export async function listEmployees(search?: string) {
     .leftJoin(positions, eq(employees.positionId, positions.id))
     .where(
       search
-        ? or(
-            ilike(employees.fullName, `%${search}%`),
-            ilike(employees.employeeCode, `%${search}%`)
-          )
+        ? or(ilike(employees.fullName, `%${search}%`), ilike(employees.employeeCode, `%${search}%`))
         : undefined
     )
     .orderBy(desc(employees.createdAt))

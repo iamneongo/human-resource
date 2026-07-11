@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import PageContainer from '@/components/layout/page-container';
 import { Badge } from '@/components/ui/badge';
 import { listEmployees } from '@/features/hr/employees/actions';
@@ -49,7 +51,17 @@ export default async function EmployeesPage() {
     : [[], []];
 
   const columns: Column<Row>[] = [
-    { header: 'Mã NV', cell: (r) => r.employeeCode },
+    {
+      header: 'Mã NV',
+      cell: (r) => (
+        <Link
+          href={`/dashboard/hr/employees/${r.id}`}
+          className='text-primary font-medium underline-offset-2 hover:underline'
+        >
+          {r.employeeCode}
+        </Link>
+      )
+    },
     { header: 'Họ tên', cell: (r) => r.fullName },
     { header: 'Phòng ban', cell: (r) => r.departmentName ?? '—' },
     { header: 'Chức vụ', cell: (r) => r.positionTitle ?? '—' },
@@ -70,10 +82,7 @@ export default async function EmployeesPage() {
       pageDescription='Quản lý hồ sơ nhân viên điện tử (HR-01).'
       pageHeaderAction={
         canCreate ? (
-          <EmployeeCreateDialog
-            departmentOptions={deptOpts}
-            positionOptions={posOpts}
-          />
+          <EmployeeCreateDialog departmentOptions={deptOpts} positionOptions={posOpts} />
         ) : undefined
       }
     >
