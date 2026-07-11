@@ -10,7 +10,7 @@ import {
   listOvertime,
   rejectOvertime
 } from '@/features/hr/attendance/overtime';
-import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
+import { getCurrentEmployeeId, getCurrentRole, roleAtLeast } from '@/lib/rbac';
 
 export const metadata = { title: 'HRM: Làm thêm giờ (OT)' };
 
@@ -30,11 +30,28 @@ type Row = Awaited<ReturnType<typeof listOvertime>>[number];
 
 export default async function OvertimePage() {
   const role = await getCurrentRole();
-  if (!roleAtLeast(role, 'manager')) {
+  if (!role) {
     return <PageContainer pageTitle='Làm thêm giờ (OT)' access={false}><div /></PageContainer>;
   }
-  const rows = await listOvertime();
-  const canApprove = roleAtLeast(role, 'manager');
+  const isManager = roleAtLeast(role, 'manager');
+  const selfId = isManager ? undefined : await getCurrentEmployeeId();
+  if (!isManager && !selfId) {
+    return (
+      <PageContainer
+        pageTitle='Làm thêm giờ (OT)'
+        access={false}
+        accessFallback={
+          <div className='text-muted-foreground text-center text-lg'>
+            Tài khoản của bạn chưa được liên kết với hồ sơ nhân viên. Vui lòng liên hệ HR.
+          </div>
+        }
+      >
+        <div />
+      </PageContainer>
+    );
+  }
+  const rows = await listOvertime(selfId ?? undefined);
+  const canApprove = isManager;
   const empOpts = roleAtLeast(role, 'hr') ? await employeeOptions() : [];
 
   const columns: Column<Row>[] = [

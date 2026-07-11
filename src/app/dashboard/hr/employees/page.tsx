@@ -2,6 +2,7 @@ import PageContainer from '@/components/layout/page-container';
 import { listEmployees } from '@/features/hr/employees/actions';
 import { EmployeeCreateDialog } from '@/features/hr/employees/components/employee-create-dialog';
 import { EmployeeTable } from '@/features/hr/employees/components/employee-table';
+import { departmentOptions, positionOptions } from '@/features/hr/common/lookups';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
 
 export const metadata = {
@@ -30,12 +31,22 @@ export default async function EmployeesPage() {
 
   const rows = await listEmployees();
   const canCreate = roleAtLeast(role, 'hr');
+  const [deptOpts, posOpts] = canCreate
+    ? await Promise.all([departmentOptions(), positionOptions()])
+    : [[], []];
 
   return (
     <PageContainer
       pageTitle='Hồ sơ nhân viên'
       pageDescription='Quản lý hồ sơ nhân viên điện tử (HR-01).'
-      pageHeaderAction={canCreate ? <EmployeeCreateDialog /> : undefined}
+      pageHeaderAction={
+        canCreate ? (
+          <EmployeeCreateDialog
+            departmentOptions={deptOpts}
+            positionOptions={posOpts}
+          />
+        ) : undefined
+      }
     >
       <EmployeeTable rows={rows} />
     </PageContainer>

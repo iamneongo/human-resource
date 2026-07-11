@@ -31,6 +31,7 @@ export type PayslipInput = {
   overtimePay: number;
   otherAdjustments: number; // thưởng (+) / phạt (-)
   insuranceRate: number; // BHXH+BHYT+BHTN cộng gộp
+  insuranceCap?: number; // trần thu nhập đóng BH (20× lương cơ sở)
   personalDeduction: number;
   dependentDeduction: number;
   dependents: number;
@@ -50,8 +51,12 @@ export function computePayslip(i: PayslipInput): PayslipResult {
   const gross =
     i.baseSalary + i.allowances + i.overtimePay + i.otherAdjustments;
 
-  // BHXH/BHYT/BHTN tính trên lương cơ bản.
-  const insurance = Math.round(i.baseSalary * i.insuranceRate);
+  // BHXH/BHYT/BHTN tính trên lương cơ bản, áp trần nếu có (20× lương cơ sở).
+  const insuranceBase =
+    i.insuranceCap && i.insuranceCap > 0
+      ? Math.min(i.baseSalary, i.insuranceCap)
+      : i.baseSalary;
+  const insurance = Math.round(insuranceBase * i.insuranceRate);
 
   const deductions =
     i.personalDeduction + i.dependents * i.dependentDeduction;

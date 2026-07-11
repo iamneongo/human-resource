@@ -9,8 +9,8 @@ import { getCurrentEmployeeId, requireRole } from '@/lib/rbac';
 
 type Result = { ok: true } | { ok: false; error: string };
 
-export async function listAdjustments() {
-  await requireRole('manager');
+export async function listAdjustments(onlyEmployeeId?: string) {
+  await requireRole('employee');
   return db
     .select({
       id: attendanceAdjustments.id,
@@ -21,6 +21,7 @@ export async function listAdjustments() {
     })
     .from(attendanceAdjustments)
     .leftJoin(employees, eq(attendanceAdjustments.employeeId, employees.id))
+    .where(onlyEmployeeId ? eq(attendanceAdjustments.employeeId, onlyEmployeeId) : undefined)
     .orderBy(desc(attendanceAdjustments.workDate))
     .limit(200);
 }

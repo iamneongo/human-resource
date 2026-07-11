@@ -175,6 +175,8 @@ export async function computeAndLockRun(runId: string): Promise<Result> {
         overtimePay,
         otherAdjustments,
         insuranceRate,
+        // Trần đóng BHXH/BHYT = 20× lương cơ sở (2.34tr → 46.8tr).
+        insuranceCap: 46_800_000,
         personalDeduction,
         dependentDeduction,
         dependents: 0,

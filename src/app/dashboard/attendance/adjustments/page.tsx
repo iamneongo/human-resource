@@ -10,7 +10,7 @@ import {
   listAdjustments,
   rejectAdjustment
 } from '@/features/hr/attendance/adjustments';
-import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
+import { getCurrentEmployeeId, getCurrentRole, roleAtLeast } from '@/lib/rbac';
 
 export const metadata = { title: 'HRM: Xử lý bất thường' };
 
@@ -25,11 +25,28 @@ type Row = Awaited<ReturnType<typeof listAdjustments>>[number];
 
 export default async function AdjustmentsPage() {
   const role = await getCurrentRole();
-  if (!roleAtLeast(role, 'manager')) {
+  if (!role) {
     return <PageContainer pageTitle='Xử lý bất thường' access={false}><div /></PageContainer>;
   }
-  const rows = await listAdjustments();
-  const canApprove = roleAtLeast(role, 'manager');
+  const isManager = roleAtLeast(role, 'manager');
+  const selfId = isManager ? undefined : await getCurrentEmployeeId();
+  if (!isManager && !selfId) {
+    return (
+      <PageContainer
+        pageTitle='Xử lý bất thường'
+        access={false}
+        accessFallback={
+          <div className='text-muted-foreground text-center text-lg'>
+            Tài khoản của bạn chưa được liên kết với hồ sơ nhân viên. Vui lòng liên hệ HR.
+          </div>
+        }
+      >
+        <div />
+      </PageContainer>
+    );
+  }
+  const rows = await listAdjustments(selfId ?? undefined);
+  const canApprove = isManager;
   const empOpts = roleAtLeast(role, 'hr') ? await employeeOptions() : [];
 
   const columns: Column<Row>[] = [

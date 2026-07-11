@@ -77,5 +77,5 @@ export async function payrollReport() {
   }
   return Array.from(byPeriod.entries())
     .map(([period, v]) => ({ id: period, period, ...v }))
-    .sort((a, b) => b.period.localeCompare(a.period));
+    .toSorted((a, b) => b.period.localeCompare(a.period));
 }

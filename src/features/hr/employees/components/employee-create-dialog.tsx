@@ -60,7 +60,15 @@ const EMPTY: EmployeeFormValues = {
   positionId: ''
 };
 
-export function EmployeeCreateDialog() {
+type Option = { value: string; label: string };
+
+export function EmployeeCreateDialog({
+  departmentOptions = [],
+  positionOptions = []
+}: {
+  departmentOptions?: Option[];
+  positionOptions?: Option[];
+}) {
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<EmployeeFormValues>(EMPTY);
   const [pending, startTransition] = useTransition();
@@ -193,6 +201,44 @@ export function EmployeeCreateDialog() {
               </SelectContent>
             </Select>
           </Field>
+          {departmentOptions.length > 0 ? (
+            <Field label='Phòng ban'>
+              <Select
+                value={values.departmentId ?? ''}
+                onValueChange={(v) => set('departmentId', v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder='Chọn' />
+                </SelectTrigger>
+                <SelectContent>
+                  {departmentOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          ) : null}
+          {positionOptions.length > 0 ? (
+            <Field label='Chức vụ'>
+              <Select
+                value={values.positionId ?? ''}
+                onValueChange={(v) => set('positionId', v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder='Chọn' />
+                </SelectTrigger>
+                <SelectContent>
+                  {positionOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          ) : null}
         </div>
 
         <DialogFooter>

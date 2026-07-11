@@ -9,8 +9,8 @@ import { getCurrentEmployeeId, requireRole } from '@/lib/rbac';
 
 type Result = { ok: true } | { ok: false; error: string };
 
-export async function listLeaves() {
-  await requireRole('manager');
+export async function listLeaves(onlyEmployeeId?: string) {
+  await requireRole('employee');
   return db
     .select({
       id: leaveRequests.id,
@@ -24,6 +24,7 @@ export async function listLeaves() {
     })
     .from(leaveRequests)
     .leftJoin(employees, eq(leaveRequests.employeeId, employees.id))
+    .where(onlyEmployeeId ? eq(leaveRequests.employeeId, onlyEmployeeId) : undefined)
     .orderBy(desc(leaveRequests.startDate))
     .limit(200);
 }
@@ -80,6 +81,30 @@ export async function approveLeave(id: string): Promise<Result> {
   if (!leave) return { ok: false, error: 'Không tìm thấy đơn.' };
   if (leave.status !== 'pending')
     return { ok: false, error: 'Đơn đã được xử lý.' };
+
+  // Chặn duyệt phép năm vượt số dư còn lại.
+  if (leave.type === 'annual') {
+    const year = new Date(leave.startDate).getFullYear();
+    const [bal] = await db
+      .select()
+      .from(leaveBalances)
+      .where(
+        and(
+          eq(leaveBalances.employeeId, leave.employeeId),
+          eq(leaveBalances.year, year)
+        )
+      )
+      .limit(1);
+    const remaining = bal
+      ? Number(bal.entitledDays) - Number(bal.usedDays)
+      : 0;
+    if (Number(leave.days) > remaining) {
+      return {
+        ok: false,
+        error: `Vượt số dư phép năm (còn ${remaining} ngày, đơn ${leave.days} ngày).`
+      };
+    }
+  }
 
   await db.transaction(async (tx) => {
     await tx

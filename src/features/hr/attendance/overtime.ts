@@ -15,9 +15,9 @@ const OT_COEFFICIENT: Record<string, string> = {
   holiday: '3.0'
 };
 
-export async function listOvertime() {
-  await requireRole('manager');
-  return db
+export async function listOvertime(onlyEmployeeId?: string) {
+  await requireRole('employee');
+  const q = db
     .select({
       id: overtimeRequests.id,
       workDate: overtimeRequests.workDate,
@@ -32,8 +32,10 @@ export async function listOvertime() {
     })
     .from(overtimeRequests)
     .leftJoin(employees, eq(overtimeRequests.employeeId, employees.id))
+    .where(onlyEmployeeId ? eq(overtimeRequests.employeeId, onlyEmployeeId) : undefined)
     .orderBy(desc(overtimeRequests.workDate))
     .limit(200);
+  return q;
 }
 
 const KINDS = ['weekday', 'weekend', 'holiday'] as const;

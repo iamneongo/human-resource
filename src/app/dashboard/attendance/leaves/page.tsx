@@ -10,7 +10,7 @@ import {
   listLeaves,
   rejectLeave
 } from '@/features/hr/attendance/leaves';
-import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
+import { getCurrentEmployeeId, getCurrentRole, roleAtLeast } from '@/lib/rbac';
 
 export const metadata = { title: 'HRM: Nghỉ phép' };
 
@@ -32,11 +32,28 @@ type Row = Awaited<ReturnType<typeof listLeaves>>[number];
 
 export default async function LeavesPage() {
   const role = await getCurrentRole();
-  if (!roleAtLeast(role, 'manager')) {
+  if (!role) {
     return <PageContainer pageTitle='Nghỉ phép' access={false}><div /></PageContainer>;
   }
-  const rows = await listLeaves();
-  const canApprove = roleAtLeast(role, 'manager');
+  const isManager = roleAtLeast(role, 'manager');
+  const selfId = isManager ? undefined : await getCurrentEmployeeId();
+  if (!isManager && !selfId) {
+    return (
+      <PageContainer
+        pageTitle='Nghỉ phép'
+        access={false}
+        accessFallback={
+          <div className='text-muted-foreground text-center text-lg'>
+            Tài khoản của bạn chưa được liên kết với hồ sơ nhân viên. Vui lòng liên hệ HR.
+          </div>
+        }
+      >
+        <div />
+      </PageContainer>
+    );
+  }
+  const rows = await listLeaves(selfId ?? undefined);
+  const canApprove = isManager;
   const empOpts = roleAtLeast(role, 'hr') ? await employeeOptions() : [];
 
   const columns: Column<Row>[] = [
