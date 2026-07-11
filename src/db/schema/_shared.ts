@@ -1,11 +1,9 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 /** Standard audit columns reused by every table. */
 export const timestamps = {
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
     .defaultNow()
@@ -22,10 +20,19 @@ export const id = () =>
 /* Organization structure (shared across HR-01..HR-05)                */
 /* ------------------------------------------------------------------ */
 
+/** Loại đơn vị trong cây tổ chức (theo dữ liệu thật: khối → phòng ban → bộ phận). */
+export const orgUnitTypeEnum = pgEnum('org_unit_type', [
+  'block', // Khối / Bộ phận lớn
+  'department', // Phòng ban
+  'section', // Section / Tổ
+  'workshop' // Xưởng
+]);
+
 export const departments = pgTable('departments', {
   id: id(),
   code: text('code').notNull().unique(),
   name: text('name').notNull(),
+  type: orgUnitTypeEnum('type').notNull().default('department'),
   parentId: uuid('parent_id'),
   costCenterId: uuid('cost_center_id'),
   ...timestamps

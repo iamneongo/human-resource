@@ -1,21 +1,8 @@
-import {
-  date,
-  foreignKey,
-  jsonb,
-  numeric,
-  pgEnum,
-  pgTable,
-  text,
-  uuid
-} from 'drizzle-orm/pg-core';
+import { date, foreignKey, jsonb, numeric, pgEnum, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 
 import { costCenters, departments, id, positions, timestamps } from './_shared';
 
-export const employeeGenderEnum = pgEnum('employee_gender', [
-  'male',
-  'female',
-  'other'
-]);
+export const employeeGenderEnum = pgEnum('employee_gender', ['male', 'female', 'other']);
 
 export const employeeStatusEnum = pgEnum('employee_status', [
   'active',
@@ -40,17 +27,16 @@ export const employeeDocumentTypeEnum = pgEnum('employee_document_type', [
 ]);
 
 export const contractTypeEnum = pgEnum('contract_type', [
-  'probation',
-  'fixed_term',
-  'indefinite',
-  'seasonal'
+  'probation', // thử việc
+  'fixed_term', // xác định thời hạn (chung)
+  'term_1y', // HĐLĐ 1 năm
+  'term_3y', // HĐLĐ 3 năm
+  'indefinite', // không xác định thời hạn (KXĐ)
+  'until_retirement', // HĐLĐ đến nghỉ hưu
+  'seasonal' // thời vụ
 ]);
 
-export const contractStatusEnum = pgEnum('contract_status', [
-  'active',
-  'expired',
-  'terminated'
-]);
+export const contractStatusEnum = pgEnum('contract_status', ['active', 'expired', 'terminated']);
 
 export const jobAssignmentTypeEnum = pgEnum('job_assignment_type', [
   'hire',
@@ -59,23 +45,11 @@ export const jobAssignmentTypeEnum = pgEnum('job_assignment_type', [
   'rotation'
 ]);
 
-export const assetTypeEnum = pgEnum('asset_type', [
-  'laptop',
-  'device',
-  'uniform',
-  'other'
-]);
+export const assetTypeEnum = pgEnum('asset_type', ['laptop', 'device', 'uniform', 'other']);
 
-export const assetStatusEnum = pgEnum('asset_status', [
-  'assigned',
-  'returned',
-  'lost'
-]);
+export const assetStatusEnum = pgEnum('asset_status', ['assigned', 'returned', 'lost']);
 
-export const rewardDisciplineTypeEnum = pgEnum('reward_discipline_type', [
-  'reward',
-  'discipline'
-]);
+export const rewardDisciplineTypeEnum = pgEnum('reward_discipline_type', ['reward', 'discipline']);
 
 export const offboardingStatusEnum = pgEnum('offboarding_status', [
   'submitted',
@@ -99,7 +73,11 @@ export const employees = pgTable(
     email: text('email'),
     address: text('address'),
     maritalStatus: maritalStatusEnum('marital_status'),
-    hireDate: date('hire_date'),
+    hireDate: date('hire_date'), // ngày vào làm
+    seniorityDate: date('seniority_date'), // ngày theo dõi thâm niên (tính phép)
+    probationEndDate: date('probation_end_date'), // ngày hết hạn thử việc
+    resignDate: date('resign_date'), // ngày nghỉ việc
+    resignReason: text('resign_reason'), // lý do thôi việc
     status: employeeStatusEnum('status').notNull().default('probation'),
     clerkUserId: text('clerk_user_id'),
     departmentId: uuid('department_id').references(() => departments.id),
@@ -140,6 +118,8 @@ export const contracts = pgTable('contracts', {
   startDate: date('start_date').notNull(),
   endDate: date('end_date'),
   baseSalary: numeric('base_salary', { precision: 18, scale: 2 }).notNull(),
+  signNumber: text('sign_number'), // số văn bản ký
+  signDate: date('sign_date'), // ngày ký HĐLĐ
   status: contractStatusEnum('status').notNull().default('active'),
   fileUrl: text('file_url'),
   ...timestamps
@@ -165,9 +145,7 @@ export const salaryInfos = pgTable('salary_infos', {
     .notNull()
     .references(() => employees.id),
   baseSalary: numeric('base_salary', { precision: 18, scale: 2 }).notNull(),
-  fixedAllowance: numeric('fixed_allowance', { precision: 18, scale: 2 })
-    .notNull()
-    .default('0'),
+  fixedAllowance: numeric('fixed_allowance', { precision: 18, scale: 2 }).notNull().default('0'),
   commercialInsurancePackage: text('commercial_insurance_package'),
   otherBenefits: jsonb('other_benefits').$type<Record<string, unknown> | null>(),
   effectiveFrom: date('effective_from').notNull(),
