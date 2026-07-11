@@ -90,7 +90,7 @@ export async function listEmployees(search?: string) {
         : undefined
     )
     .orderBy(desc(employees.createdAt))
-    .limit(200);
+    .limit(2000);
 
   return rows;
 }
