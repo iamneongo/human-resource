@@ -109,6 +109,13 @@ export const navGroups: NavGroup[] = [
         access: { role: 'admin' }
       },
       {
+        title: 'Import nhân viên',
+        url: '/dashboard/org/import',
+        icon: 'upload',
+        isActive: false,
+        items: []
+      },
+      {
         title: 'Hồ sơ cá nhân',
         url: '/dashboard/profile',
         icon: 'profile',
