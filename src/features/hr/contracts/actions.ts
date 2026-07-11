@@ -20,6 +20,7 @@ export async function listContracts() {
       endDate: contracts.endDate,
       baseSalary: contracts.baseSalary,
       status: contracts.status,
+      fileUrl: contracts.fileUrl,
       employeeName: employees.fullName,
       employeeCode: employees.employeeCode
     })
@@ -51,7 +52,8 @@ export async function createContract(v: Record<string, string>): Promise<Result>
       startDate: v.startDate,
       endDate: v.endDate || null,
       baseSalary: v.baseSalary,
-      status: 'active'
+      status: 'active',
+      fileUrl: v.fileUrl || null
     });
     revalidatePath('/dashboard/hr/contracts');
     return { ok: true };

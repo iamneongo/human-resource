@@ -1,5 +1,7 @@
 import PageContainer from '@/components/layout/page-container';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
+import { PayrollChart } from '@/features/hr/payroll/payroll-chart';
 import { payrollReport } from '@/features/hr/payroll/payslips';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
 
@@ -29,6 +31,16 @@ export default async function PayrollReportsPage() {
       pageTitle='Báo cáo lương'
       pageDescription='Tổng hợp chi phí lương, BHXH và thuế TNCN theo từng kỳ lương.'
     >
+      {rows.length > 0 ? (
+        <Card className='mb-6'>
+          <CardHeader>
+            <CardTitle className='text-base'>Chi phí lương theo kỳ</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PayrollChart data={rows} />
+          </CardContent>
+        </Card>
+      ) : null}
       <SimpleTable columns={columns} rows={rows} emptyText='Chưa có dữ liệu lương.' />
     </PageContainer>
   );

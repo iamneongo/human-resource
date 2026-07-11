@@ -1,5 +1,6 @@
 import PageContainer from '@/components/layout/page-container';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BellChart } from '@/features/hr/performance/bell-chart';
 import { performanceDistribution } from '@/features/hr/performance/reports';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
 
@@ -20,6 +21,15 @@ export default async function PerformanceReportsPage() {
       <p className='text-muted-foreground mb-4 text-sm'>
         Tổng số đánh giá đã chốt: <span className='font-semibold'>{total}</span>
       </p>
+      <Card className='mb-6'>
+        <CardHeader>
+          <CardTitle className='text-base'>Phân bố xếp loại (Bell-curve)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BellChart data={bands} />
+        </CardContent>
+      </Card>
+
       <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
         {bands.map((b) => (
           <Card key={b.id}>

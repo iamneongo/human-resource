@@ -1,126 +1,103 @@
+import { count, eq } from 'drizzle-orm';
+
 import PageContainer from '@/components/layout/page-container';
-import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardHeader,
   CardTitle,
   CardDescription,
-  CardAction,
   CardFooter
 } from '@/components/ui/card';
-import { Icons } from '@/components/icons';
-import React from 'react';
+import { db } from '@/db';
+import { contracts, departments, employees } from '@/db/schema';
+import { HrCharts } from '@/features/overview/hr-charts';
+import { hrDashboardData } from '@/features/overview/hr-dashboard';
+import Link from 'next/link';
 
-export default function OverViewLayout({
-  sales,
-  pie_stats,
-  bar_stats,
-  area_stats
-}: {
-  sales: React.ReactNode;
-  pie_stats: React.ReactNode;
-  bar_stats: React.ReactNode;
-  area_stats: React.ReactNode;
-}) {
+async function getSummary() {
+  try {
+    const [emp, dept, activeEmp, activeContracts] = await Promise.all([
+      db.select({ v: count() }).from(employees),
+      db.select({ v: count() }).from(departments),
+      db
+        .select({ v: count() })
+        .from(employees)
+        .where(eq(employees.status, 'active')),
+      db
+        .select({ v: count() })
+        .from(contracts)
+        .where(eq(contracts.status, 'active'))
+    ]);
+    return {
+      total: Number(emp[0]?.v ?? 0),
+      departments: Number(dept[0]?.v ?? 0),
+      active: Number(activeEmp[0]?.v ?? 0),
+      contracts: Number(activeContracts[0]?.v ?? 0)
+    };
+  } catch {
+    return { total: 0, departments: 0, active: 0, contracts: 0 };
+  }
+}
+
+export default async function OverViewLayout() {
+  const [s, chartData] = await Promise.all([getSummary(), hrDashboardData()]);
+  const cards = [
+    { label: 'Tổng nhân sự', value: s.total, hint: 'Toàn bộ hồ sơ nhân viên' },
+    { label: 'Đang làm việc', value: s.active, hint: 'Nhân viên trạng thái hoạt động' },
+    { label: 'Phòng ban', value: s.departments, hint: 'Số phòng ban trong cơ cấu' },
+    { label: 'Hợp đồng hiệu lực', value: s.contracts, hint: 'Hợp đồng còn hiệu lực' }
+  ];
   return (
     <PageContainer>
       <div className='flex flex-1 flex-col space-y-2'>
         <div className='flex items-center justify-between'>
-          <h2 className='text-2xl font-bold tracking-tight'>Hi, Welcome back 👋</h2>
+          <h2 className='text-2xl font-bold tracking-tight'>
+            Xin chào, chào mừng trở lại 👋
+          </h2>
         </div>
 
         <div className='*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs md:grid-cols-2 lg:grid-cols-4'>
-          <Card className='@container/card'>
-            <CardHeader>
-              <CardDescription>Total Revenue</CardDescription>
-              <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
-                $1,250.00
-              </CardTitle>
-              <CardAction>
-                <Badge variant='outline'>
-                  <Icons.trendingUp />
-                  +12.5%
-                </Badge>
-              </CardAction>
-            </CardHeader>
-            <CardFooter className='flex-col items-start gap-1.5 text-sm'>
-              <div className='line-clamp-1 flex gap-2 font-medium'>
-                Trending up this month <Icons.trendingUp className='size-4' />
-              </div>
-              <div className='text-muted-foreground'>Visitors for the last 6 months</div>
-            </CardFooter>
-          </Card>
-          <Card className='@container/card'>
-            <CardHeader>
-              <CardDescription>New Customers</CardDescription>
-              <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
-                1,234
-              </CardTitle>
-              <CardAction>
-                <Badge variant='outline'>
-                  <Icons.trendingDown />
-                  -20%
-                </Badge>
-              </CardAction>
-            </CardHeader>
-            <CardFooter className='flex-col items-start gap-1.5 text-sm'>
-              <div className='line-clamp-1 flex gap-2 font-medium'>
-                Down 20% this period <Icons.trendingDown className='size-4' />
-              </div>
-              <div className='text-muted-foreground'>Acquisition needs attention</div>
-            </CardFooter>
-          </Card>
-          <Card className='@container/card'>
-            <CardHeader>
-              <CardDescription>Active Accounts</CardDescription>
-              <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
-                45,678
-              </CardTitle>
-              <CardAction>
-                <Badge variant='outline'>
-                  <Icons.trendingUp />
-                  +12.5%
-                </Badge>
-              </CardAction>
-            </CardHeader>
-            <CardFooter className='flex-col items-start gap-1.5 text-sm'>
-              <div className='line-clamp-1 flex gap-2 font-medium'>
-                Strong user retention <Icons.trendingUp className='size-4' />
-              </div>
-              <div className='text-muted-foreground'>Engagement exceed targets</div>
-            </CardFooter>
-          </Card>
-          <Card className='@container/card'>
-            <CardHeader>
-              <CardDescription>Growth Rate</CardDescription>
-              <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
-                4.5%
-              </CardTitle>
-              <CardAction>
-                <Badge variant='outline'>
-                  <Icons.trendingUp />
-                  +4.5%
-                </Badge>
-              </CardAction>
-            </CardHeader>
-            <CardFooter className='flex-col items-start gap-1.5 text-sm'>
-              <div className='line-clamp-1 flex gap-2 font-medium'>
-                Steady performance increase <Icons.trendingUp className='size-4' />
-              </div>
-              <div className='text-muted-foreground'>Meets growth projections</div>
-            </CardFooter>
-          </Card>
+          {cards.map((c) => (
+            <Card key={c.label} className='@container/card'>
+              <CardHeader>
+                <CardDescription>{c.label}</CardDescription>
+                <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
+                  {c.value.toLocaleString('vi-VN')}
+                </CardTitle>
+              </CardHeader>
+              <CardFooter className='text-muted-foreground text-sm'>
+                {c.hint}
+              </CardFooter>
+            </Card>
+          ))}
         </div>
-        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-7'>
-          <div className='col-span-4'>{bar_stats}</div>
-          <div className='col-span-4 md:col-span-3'>
-            {/* sales arallel routes */}
-            {sales}
+        <HrCharts data={chartData} />
+
+        <div>
+          <h3 className='mt-4 mb-2 text-sm font-medium'>Truy cập nhanh</h3>
+          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+            {QUICK_LINKS.map((q) => (
+              <Link key={q.href} href={q.href}>
+                <Card className='hover:border-primary/50 h-full transition-colors'>
+                  <CardHeader>
+                    <CardTitle className='text-base'>{q.title}</CardTitle>
+                    <CardDescription>{q.desc}</CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+            ))}
           </div>
-          <div className='col-span-4'>{area_stats}</div>
-          <div className='col-span-4 min-h-0 md:col-span-3'>{pie_stats}</div>
         </div>
       </div>
     </PageContainer>
   );
 }
+
+const QUICK_LINKS = [
+  { title: 'Hồ sơ nhân viên', desc: 'Quản lý hồ sơ, hợp đồng, tài sản', href: '/dashboard/hr/employees' },
+  { title: 'Chấm công', desc: 'Ca làm việc, OT, nghỉ phép', href: '/dashboard/attendance/timesheets' },
+  { title: 'Tiền lương', desc: 'Chốt lương, phiếu lương, BHXH & thuế', href: '/dashboard/payroll/runs' },
+  { title: 'Hiệu suất', desc: 'KPI/OKR, chu kỳ đánh giá', href: '/dashboard/performance/cycles' },
+  { title: 'Đào tạo', desc: 'Khóa học, ghi danh, lộ trình', href: '/dashboard/training/courses' },
+  { title: 'Cơ cấu tổ chức', desc: 'Phòng ban, chức vụ, liên kết tài khoản', href: '/dashboard/org' }
+];

@@ -143,6 +143,7 @@ export async function createCourse(v: Record<string, string>): Promise<Result> {
       planId: v.planId || null,
       instructor: v.instructor || null,
       isElearning: v.isElearning === 'true',
+      materialsUrl: v.materialsUrl || null,
       startDate: v.startDate || null,
       endDate: v.endDate || null,
       cost: v.cost || null

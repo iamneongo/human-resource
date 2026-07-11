@@ -47,7 +47,8 @@ export default async function CoursesPage() {
               { name: 'isElearning', label: 'Hình thức', type: 'select', options: [{ value: 'false', label: 'Trực tiếp' }, { value: 'true', label: 'E-learning' }] },
               { name: 'startDate', label: 'Bắt đầu', type: 'date' },
               { name: 'endDate', label: 'Kết thúc', type: 'date' },
-              { name: 'cost', label: 'Chi phí (₫)', type: 'number' }
+              { name: 'cost', label: 'Chi phí (₫)', type: 'number' },
+              { name: 'materialsUrl', label: 'Tài liệu khóa học', type: 'file', colSpan: 2 }
             ]}
           />
         ) : undefined

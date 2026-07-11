@@ -41,6 +41,17 @@ export default async function ContractsPage() {
     {
       header: 'Lương cơ bản',
       cell: (r) => Number(r.baseSalary).toLocaleString('vi-VN') + ' ₫'
+    },
+    {
+      header: 'Hồ sơ',
+      cell: (r) =>
+        r.fileUrl ? (
+          <a href={r.fileUrl} target='_blank' rel='noreferrer' className='text-primary underline'>
+            Xem file
+          </a>
+        ) : (
+          '—'
+        )
     }
   ];
 
@@ -66,7 +77,8 @@ export default async function ContractsPage() {
               },
               { name: 'startDate', label: 'Ngày bắt đầu', type: 'date', required: true },
               { name: 'endDate', label: 'Ngày kết thúc', type: 'date' },
-              { name: 'baseSalary', label: 'Lương cơ bản (₫)', type: 'number', required: true }
+              { name: 'baseSalary', label: 'Lương cơ bản (₫)', type: 'number', required: true },
+              { name: 'fileUrl', label: 'File hợp đồng (PDF/ảnh)', type: 'file', colSpan: 2 }
             ]}
           />
         ) : undefined

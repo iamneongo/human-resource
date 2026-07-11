@@ -26,12 +26,15 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
+import { Combobox } from './combobox';
+import { FileUpload } from './file-upload';
+
 export type Option = { value: string; label: string };
 
 export type FieldConfig = {
   name: string;
   label: string;
-  type?: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'email';
+  type?: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'email' | 'file';
   options?: Option[];
   required?: boolean;
   placeholder?: string;
@@ -115,7 +118,14 @@ export function EntityFormDialog({
                 {f.label}
                 {f.required ? ' *' : ''}
               </Label>
-              {f.type === 'select' ? (
+              {f.type === 'select' && (f.options?.length ?? 0) > 8 ? (
+                <Combobox
+                  options={f.options ?? []}
+                  value={values[f.name] ?? ''}
+                  onChange={(v) => set(f.name, v)}
+                  placeholder={f.placeholder ?? 'Chọn'}
+                />
+              ) : f.type === 'select' ? (
                 <Select
                   value={values[f.name] ?? ''}
                   onValueChange={(v) => set(f.name, v)}
@@ -136,6 +146,11 @@ export function EntityFormDialog({
                   value={values[f.name] ?? ''}
                   onChange={(e) => set(f.name, e.target.value)}
                   placeholder={f.placeholder}
+                />
+              ) : f.type === 'file' ? (
+                <FileUpload
+                  value={values[f.name] || undefined}
+                  onChange={(url) => set(f.name, url)}
                 />
               ) : (
                 <Input
