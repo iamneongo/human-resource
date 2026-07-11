@@ -1,0 +1,167 @@
+'use client';
+
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+
+import { Icons } from '@/components/icons';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+
+export type Option = { value: string; label: string };
+
+export type FieldConfig = {
+  name: string;
+  label: string;
+  type?: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'email';
+  options?: Option[];
+  required?: boolean;
+  placeholder?: string;
+  colSpan?: 1 | 2;
+};
+
+type ActionResult = { ok: true } | { ok: false; error: string };
+
+export function EntityFormDialog({
+  triggerLabel,
+  title,
+  description,
+  fields,
+  action,
+  defaults = {}
+}: {
+  triggerLabel: string;
+  title: string;
+  description?: string;
+  fields: FieldConfig[];
+  action: (values: Record<string, string>) => Promise<ActionResult>;
+  defaults?: Record<string, string>;
+}) {
+  const initial = () =>
+    Object.fromEntries(fields.map((f) => [f.name, defaults[f.name] ?? '']));
+  const [open, setOpen] = useState(false);
+  const [values, setValues] = useState<Record<string, string>>(initial);
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  function set(name: string, value: string) {
+    setValues((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function onSubmit() {
+    for (const f of fields) {
+      if (f.required && !values[f.name]) {
+        toast.error(`Vui lòng nhập: ${f.label}`);
+        return;
+      }
+    }
+    startTransition(async () => {
+      const res = await action(values);
+      if (res.ok) {
+        toast.success('Đã lưu');
+        setValues(initial());
+        setOpen(false);
+        router.refresh();
+      } else {
+        toast.error(res.error);
+      }
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className='text-xs md:text-sm'>
+          <Icons.add className='mr-2 h-4 w-4' /> {triggerLabel}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className='sm:max-w-lg'>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          {description ? (
+            <DialogDescription>{description}</DialogDescription>
+          ) : null}
+        </DialogHeader>
+
+        <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+          {fields.map((f) => (
+            <div
+              key={f.name}
+              className={
+                f.colSpan === 2 || f.type === 'textarea'
+                  ? 'flex flex-col gap-1.5 sm:col-span-2'
+                  : 'flex flex-col gap-1.5'
+              }
+            >
+              <Label className='text-xs'>
+                {f.label}
+                {f.required ? ' *' : ''}
+              </Label>
+              {f.type === 'select' ? (
+                <Select
+                  value={values[f.name] ?? ''}
+                  onValueChange={(v) => set(f.name, v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={f.placeholder ?? 'Chọn'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(f.options ?? []).map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : f.type === 'textarea' ? (
+                <Textarea
+                  value={values[f.name] ?? ''}
+                  onChange={(e) => set(f.name, e.target.value)}
+                  placeholder={f.placeholder}
+                />
+              ) : (
+                <Input
+                  type={f.type === 'number' ? 'number' : f.type ?? 'text'}
+                  value={values[f.name] ?? ''}
+                  onChange={(e) => set(f.name, e.target.value)}
+                  placeholder={f.placeholder}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant='outline'
+            onClick={() => setOpen(false)}
+            disabled={pending}
+          >
+            Huỷ
+          </Button>
+          <Button onClick={onSubmit} disabled={pending}>
+            {pending ? 'Đang lưu...' : 'Lưu'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
