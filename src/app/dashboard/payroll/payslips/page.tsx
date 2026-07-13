@@ -3,16 +3,21 @@ import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
 import { listPayslips } from '@/features/hr/payroll/payslips';
 import { SendButton } from '@/features/hr/payroll/send-button';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
+import { formatVND } from '@/lib/format';
 
 export const metadata = { title: 'HRM: Phiếu lương' };
 
-const vnd = (n: string) => Number(n).toLocaleString('vi-VN') + ' ₫';
+const vnd = formatVND;
 type Row = Awaited<ReturnType<typeof listPayslips>>[number];
 
 export default async function PayslipsPage() {
   const role = await getCurrentRole();
   if (!roleAtLeast(role, 'hr')) {
-    return <PageContainer pageTitle='Phiếu lương' access={false}><div /></PageContainer>;
+    return (
+      <PageContainer pageTitle='Phiếu lương' access={false}>
+        <div />
+      </PageContainer>
+    );
   }
   const rows = await listPayslips();
 
@@ -27,11 +32,12 @@ export default async function PayslipsPage() {
   ];
 
   return (
-    <PageContainer
-      pageTitle='Phiếu lương (Payslip)'
-      pageDescription='Phiếu lương điện tử sinh tự động khi chốt bảng lương; gửi bảo mật tới từng nhân viên.'
-    >
-      <SimpleTable columns={columns} rows={rows} emptyText='Chưa có phiếu lương. Hãy tạo và chốt một kỳ lương.' />
+    <PageContainer pageTitle='Phiếu lương (Payslip)'>
+      <SimpleTable
+        columns={columns}
+        rows={rows}
+        emptyText='Chưa có phiếu lương. Hãy tạo và chốt một kỳ lương.'
+      />
     </PageContainer>
   );
 }

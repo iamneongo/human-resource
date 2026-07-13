@@ -30,6 +30,26 @@ export async function listAssets() {
 
 const TYPES = ['laptop', 'device', 'uniform', 'other'] as const;
 
+/** Wrapper cho EntityFormDialog: nhận Record thay vì string trực tiếp. */
+export async function returnAssetForm(id: string, v: Record<string, string>): Promise<Result> {
+  return returnAsset(id, v.returnDate ?? '');
+}
+
+export async function returnAsset(id: string, returnDate: string): Promise<Result> {
+  try {
+    await requireRole('hr');
+  } catch {
+    return { ok: false, error: 'Không có quyền.' };
+  }
+  try {
+    await db.update(assets).set({ returnDate, status: 'returned' }).where(eq(assets.id, id));
+    revalidatePath('/dashboard/hr/assets');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
+  }
+}
+
 export async function createAsset(v: Record<string, string>): Promise<Result> {
   try {
     await requireRole('hr');

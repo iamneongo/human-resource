@@ -5,8 +5,16 @@ import { Badge } from '@/components/ui/badge';
 import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
 import { employeeOptions } from '@/features/hr/common/lookups';
 import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
-import { createContract, listContracts } from '@/features/hr/contracts/actions';
+import {
+  createContract,
+  deleteContract,
+  listContracts,
+  updateContract
+} from '@/features/hr/contracts/actions';
+import { ConfirmDeleteDialog } from '@/features/hr/common/confirm-delete-dialog';
+import { ContractFileCell } from '@/features/hr/contracts/contract-file-cell';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
+import { formatVND } from '@/lib/format';
 
 export const metadata = { title: 'HRM: Hợp đồng lao động' };
 
@@ -34,31 +42,97 @@ export default async function ContractsPage() {
 
   const columns: Column<Row>[] = [
     { header: 'Số HĐ', cell: (r) => r.contractNumber, className: 'font-medium' },
-    { header: 'Nhân viên', cell: (r) => `${r.employeeCode ?? ''} ${r.employeeName ?? ''}` },
+    {
+      header: 'Nhân viên',
+      cell: (r) => `${r.employeeCode ?? ''} ${r.employeeName ?? ''}`
+    },
     { header: 'Loại', cell: (r) => TYPE_LABEL[r.type] ?? r.type },
     { header: 'Bắt đầu', cell: (r) => r.startDate },
     { header: 'Kết thúc', cell: (r) => renderExpiry(r.endDate) },
     {
       header: 'Lương cơ bản',
-      cell: (r) => Number(r.baseSalary).toLocaleString('vi-VN') + ' ₫'
+      cell: (r) => formatVND(r.baseSalary)
     },
     {
-      header: 'Hồ sơ',
-      cell: (r) =>
-        r.fileUrl ? (
-          <a href={r.fileUrl} target='_blank' rel='noreferrer' className='text-primary underline'>
-            Xem file
-          </a>
-        ) : (
-          '—'
-        )
-    }
+      header: 'Tài liệu',
+      cell: (r) => (
+        <ContractFileCell
+          contractId={r.id}
+          contractNumber={r.contractNumber}
+          fileUrl={r.fileUrl ?? null}
+          canUpload={canCreate}
+        />
+      )
+    },
+    ...(canCreate
+      ? [
+          {
+            header: '',
+            cell: (r: Row) => (
+              <div className='flex justify-end gap-1'>
+                <EntityFormDialog
+                  mode='edit'
+                  title={`Sửa HĐ: ${r.contractNumber}`}
+                  action={updateContract.bind(null, r.id)}
+                  defaults={{
+                    contractNumber: r.contractNumber,
+                    type: r.type,
+                    startDate: r.startDate,
+                    endDate: r.endDate ?? '',
+                    baseSalary: r.baseSalary,
+                    status: r.status
+                  }}
+                  fields={[
+                    { name: 'contractNumber', label: 'Số hợp đồng', required: true },
+                    {
+                      name: 'type',
+                      label: 'Loại',
+                      type: 'select' as const,
+                      required: true,
+                      options: Object.entries(TYPE_LABEL).map(([value, label]) => ({
+                        value,
+                        label
+                      }))
+                    },
+                    {
+                      name: 'startDate',
+                      label: 'Ngày bắt đầu',
+                      type: 'date' as const,
+                      required: true
+                    },
+                    { name: 'endDate', label: 'Ngày kết thúc', type: 'date' as const },
+                    {
+                      name: 'baseSalary',
+                      label: 'Lương cơ bản (₫)',
+                      type: 'number' as const,
+                      required: true
+                    },
+                    {
+                      name: 'status',
+                      label: 'Trạng thái',
+                      type: 'select' as const,
+                      options: [
+                        { value: 'active', label: 'Hiệu lực' },
+                        { value: 'expired', label: 'Hết hạn' },
+                        { value: 'terminated', label: 'Chấm dứt' }
+                      ]
+                    }
+                  ]}
+                />
+                <ConfirmDeleteDialog
+                  label={`HĐ ${r.contractNumber}`}
+                  action={deleteContract.bind(null, r.id)}
+                />
+              </div>
+            )
+          }
+        ]
+      : [])
   ];
 
   return (
     <PageContainer
       pageTitle='Hợp đồng lao động'
-      pageDescription='Theo dõi loại hợp đồng, thời hạn và cảnh báo gia hạn hợp đồng sắp hết hạn (≤ 30 ngày).'
       pageHeaderAction={
         canCreate ? (
           <EntityFormDialog
@@ -66,19 +140,38 @@ export default async function ContractsPage() {
             title='Thêm hợp đồng lao động'
             action={createContract}
             fields={[
-              { name: 'employeeId', label: 'Nhân viên', type: 'select', options: empOpts, required: true, colSpan: 2 },
+              {
+                name: 'employeeId',
+                label: 'Nhân viên',
+                type: 'select',
+                options: empOpts,
+                required: true,
+                colSpan: 2
+              },
               { name: 'contractNumber', label: 'Số hợp đồng', required: true },
               {
                 name: 'type',
                 label: 'Loại hợp đồng',
                 type: 'select',
                 required: true,
-                options: Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))
+                options: Object.entries(TYPE_LABEL).map(([value, label]) => ({
+                  value,
+                  label
+                }))
               },
-              { name: 'startDate', label: 'Ngày bắt đầu', type: 'date', required: true },
+              {
+                name: 'startDate',
+                label: 'Ngày bắt đầu',
+                type: 'date',
+                required: true
+              },
               { name: 'endDate', label: 'Ngày kết thúc', type: 'date' },
-              { name: 'baseSalary', label: 'Lương cơ bản (₫)', type: 'number', required: true },
-              { name: 'fileUrl', label: 'File hợp đồng (PDF/ảnh)', type: 'file', colSpan: 2 }
+              {
+                name: 'baseSalary',
+                label: 'Lương cơ bản (₫)',
+                type: 'number',
+                required: true
+              }
             ]}
           />
         ) : undefined
@@ -94,6 +187,10 @@ function renderExpiry(endDate: string | null) {
   const days = differenceInCalendarDays(parseISO(endDate), new Date());
   if (days < 0) return <Badge variant='destructive'>Hết hạn ({endDate})</Badge>;
   if (days <= 30)
-    return <Badge variant='secondary'>Sắp hết hạn: {endDate} ({days} ngày)</Badge>;
+    return (
+      <Badge variant='secondary'>
+        Sắp hết hạn: {endDate} ({days} ngày)
+      </Badge>
+    );
   return <span>{endDate}</span>;
 }

@@ -14,7 +14,10 @@ import { getCurrentEmployeeId, getCurrentRole, roleAtLeast } from '@/lib/rbac';
 
 export const metadata = { title: 'HRM: Xử lý bất thường' };
 
-const STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+const STATUS: Record<
+  string,
+  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }
+> = {
   pending: { label: 'Chờ duyệt', variant: 'outline' },
   approved: { label: 'Đã duyệt', variant: 'default' },
   rejected: { label: 'Từ chối', variant: 'destructive' },
@@ -26,7 +29,11 @@ type Row = Awaited<ReturnType<typeof listAdjustments>>[number];
 export default async function AdjustmentsPage() {
   const role = await getCurrentRole();
   if (!role) {
-    return <PageContainer pageTitle='Xử lý bất thường' access={false}><div /></PageContainer>;
+    return (
+      <PageContainer pageTitle='Xử lý bất thường' access={false}>
+        <div />
+      </PageContainer>
+    );
   }
   const isManager = roleAtLeast(role, 'manager');
   const selfId = isManager ? undefined : await getCurrentEmployeeId();
@@ -80,7 +87,6 @@ export default async function AdjustmentsPage() {
   return (
     <PageContainer
       pageTitle='Xử lý bất thường'
-      pageDescription='Nhân viên giải trình quên chấm công / đi muộn / về sớm; quản lý phê duyệt điều chỉnh dữ liệu công.'
       pageHeaderAction={
         <EntityFormDialog
           triggerLabel='Tạo giải trình'
@@ -88,7 +94,15 @@ export default async function AdjustmentsPage() {
           action={createAdjustment}
           fields={[
             ...(empOpts.length
-              ? [{ name: 'employeeId', label: 'Nhân viên', type: 'select' as const, options: empOpts, colSpan: 2 as const }]
+              ? [
+                  {
+                    name: 'employeeId',
+                    label: 'Nhân viên',
+                    type: 'select' as const,
+                    options: empOpts,
+                    colSpan: 2 as const
+                  }
+                ]
               : []),
             { name: 'workDate', label: 'Ngày công', type: 'date', required: true },
             { name: 'requestedCheckIn', label: 'Giờ vào đề xuất (HH:MM)', placeholder: '08:00' },

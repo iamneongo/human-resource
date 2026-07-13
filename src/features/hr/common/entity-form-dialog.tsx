@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
+import { DatePickerVN } from '@/components/ui/date-picker-vn';
 import { Combobox } from './combobox';
 import { FileUpload } from './file-upload';
 
@@ -49,17 +50,20 @@ export function EntityFormDialog({
   description,
   fields,
   action,
-  defaults = {}
+  defaults = {},
+  mode = 'create',
+  triggerVariant = 'default'
 }: {
-  triggerLabel: string;
+  triggerLabel?: string;
   title: string;
   description?: string;
   fields: FieldConfig[];
   action: (values: Record<string, string>) => Promise<ActionResult>;
   defaults?: Record<string, string>;
+  mode?: 'create' | 'edit';
+  triggerVariant?: 'default' | 'outline' | 'ghost';
 }) {
-  const initial = () =>
-    Object.fromEntries(fields.map((f) => [f.name, defaults[f.name] ?? '']));
+  const initial = () => Object.fromEntries(fields.map((f) => [f.name, defaults[f.name] ?? '']));
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>(initial);
   const [pending, startTransition] = useTransition();
@@ -89,19 +93,28 @@ export function EntityFormDialog({
     });
   }
 
+  function onOpenChange(v: boolean) {
+    if (v) setValues(initial());
+    setOpen(v);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button className='text-xs md:text-sm'>
-          <Icons.add className='mr-2 h-4 w-4' /> {triggerLabel}
-        </Button>
+        {mode === 'edit' ? (
+          <Button variant='ghost' size='icon' className='h-7 w-7' title='Chỉnh sửa'>
+            <Icons.edit className='h-3.5 w-3.5' />
+          </Button>
+        ) : (
+          <Button variant={triggerVariant} className='text-xs md:text-sm'>
+            <Icons.add className='mr-2 h-4 w-4' /> {triggerLabel ?? 'Thêm mới'}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className='sm:max-w-lg'>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          {description ? (
-            <DialogDescription>{description}</DialogDescription>
-          ) : null}
+          {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
 
         <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
@@ -126,10 +139,7 @@ export function EntityFormDialog({
                   placeholder={f.placeholder ?? 'Chọn'}
                 />
               ) : f.type === 'select' ? (
-                <Select
-                  value={values[f.name] ?? ''}
-                  onValueChange={(v) => set(f.name, v)}
-                >
+                <Select value={values[f.name] ?? ''} onValueChange={(v) => set(f.name, v)}>
                   <SelectTrigger>
                     <SelectValue placeholder={f.placeholder ?? 'Chọn'} />
                   </SelectTrigger>
@@ -152,9 +162,15 @@ export function EntityFormDialog({
                   value={values[f.name] || undefined}
                   onChange={(url) => set(f.name, url)}
                 />
+              ) : f.type === 'date' ? (
+                <DatePickerVN
+                  value={values[f.name] ?? ''}
+                  onChange={(v) => set(f.name, v)}
+                  placeholder={f.placeholder ?? 'Chọn ngày'}
+                />
               ) : (
                 <Input
-                  type={f.type === 'number' ? 'number' : f.type ?? 'text'}
+                  type={f.type === 'number' ? 'number' : (f.type ?? 'text')}
                   value={values[f.name] ?? ''}
                   onChange={(e) => set(f.name, e.target.value)}
                   placeholder={f.placeholder}
@@ -165,11 +181,7 @@ export function EntityFormDialog({
         </div>
 
         <DialogFooter>
-          <Button
-            variant='outline'
-            onClick={() => setOpen(false)}
-            disabled={pending}
-          >
+          <Button variant='outline' onClick={() => setOpen(false)} disabled={pending}>
             Huỷ
           </Button>
           <Button onClick={onSubmit} disabled={pending}>

@@ -79,11 +79,20 @@ export default function AppSidebar() {
                         <SidebarMenuSub>
                           {item.items?.map((subItem) => (
                             <SidebarMenuSubItem key={subItem.title}>
-                              <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
-                                <Link href={subItem.url}>
+                              {subItem.disabled ? (
+                                <SidebarMenuSubButton
+                                  className='cursor-not-allowed opacity-40'
+                                  onClick={(e) => e.preventDefault()}
+                                >
                                   <span>{subItem.title}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
+                                </SidebarMenuSubButton>
+                              ) : (
+                                <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
+                                  <Link href={subItem.url}>
+                                    <span>{subItem.title}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              )}
                             </SidebarMenuSubItem>
                           ))}
                         </SidebarMenuSub>

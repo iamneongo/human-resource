@@ -4,16 +4,21 @@ import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
 import { PayrollChart } from '@/features/hr/payroll/payroll-chart';
 import { payrollReport } from '@/features/hr/payroll/payslips';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
+import { formatVND } from '@/lib/format';
 
 export const metadata = { title: 'HRM: Báo cáo lương' };
 
-const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
+const vnd = formatVND;
 type Row = Awaited<ReturnType<typeof payrollReport>>[number];
 
 export default async function PayrollReportsPage() {
   const role = await getCurrentRole();
   if (!roleAtLeast(role, 'hr')) {
-    return <PageContainer pageTitle='Báo cáo lương' access={false}><div /></PageContainer>;
+    return (
+      <PageContainer pageTitle='Báo cáo lương' access={false}>
+        <div />
+      </PageContainer>
+    );
   }
   const rows = await payrollReport();
 
@@ -23,14 +28,14 @@ export default async function PayrollReportsPage() {
     { header: 'Tổng quỹ lương (gross)', cell: (r) => vnd(r.gross) },
     { header: 'Tổng BHXH', cell: (r) => vnd(r.insurance) },
     { header: 'Tổng thuế TNCN', cell: (r) => vnd(r.tax) },
-    { header: 'Tổng thực chi (net)', cell: (r) => <span className='font-semibold'>{vnd(r.net)}</span> }
+    {
+      header: 'Tổng thực chi (net)',
+      cell: (r) => <span className='font-semibold'>{vnd(r.net)}</span>
+    }
   ];
 
   return (
-    <PageContainer
-      pageTitle='Báo cáo lương'
-      pageDescription='Tổng hợp chi phí lương, BHXH và thuế TNCN theo từng kỳ lương.'
-    >
+    <PageContainer pageTitle='Báo cáo lương'>
       {rows.length > 0 ? (
         <Card className='mb-6'>
           <CardHeader>

@@ -24,6 +24,7 @@
       "headers": {
         "Authorization": "Bearer ${REUI_LICENSE_KEY}"
       }
-    }
+    },
+    "@extend": "https://ui.extend.ai/r/{name}.json"
   }
 }

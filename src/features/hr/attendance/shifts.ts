@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { asc } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { shifts } from '@/db/schema';
@@ -15,6 +15,46 @@ export async function listShifts() {
 }
 
 const TYPES = ['office', 'split', 'night', 'rotating'] as const;
+
+export async function updateShift(id: string, v: Record<string, string>): Promise<Result> {
+  try {
+    await requireRole('hr');
+  } catch {
+    return { ok: false, error: 'Không có quyền.' };
+  }
+  try {
+    await db
+      .update(shifts)
+      .set({
+        name: v.name || undefined,
+        type: (v.type as (typeof TYPES)[number]) || undefined,
+        startTime: v.startTime || undefined,
+        endTime: v.endTime || undefined,
+        breakMinutes: v.breakMinutes ? Number(v.breakMinutes) : undefined,
+        standardHours: v.standardHours || undefined
+      })
+      .where(eq(shifts.id, id));
+    revalidatePath('/dashboard/attendance/shifts');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
+  }
+}
+
+export async function deleteShift(id: string): Promise<Result> {
+  try {
+    await requireRole('hr');
+  } catch {
+    return { ok: false, error: 'Không có quyền.' };
+  }
+  try {
+    await db.delete(shifts).where(eq(shifts.id, id));
+    revalidatePath('/dashboard/attendance/shifts');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
+  }
+}
 
 export async function createShift(v: Record<string, string>): Promise<Result> {
   try {

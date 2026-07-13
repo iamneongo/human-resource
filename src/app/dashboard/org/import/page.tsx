@@ -22,10 +22,7 @@ export default async function ImportPage() {
     );
   }
   return (
-    <PageContainer
-      pageTitle='Import nhân viên từ Excel / CSV'
-      pageDescription='Tải file danh sách, ánh xạ cột và nhập hàng loạt vào hệ thống. Mã trùng sẽ được bỏ qua.'
-    >
+    <PageContainer pageTitle='Import nhân viên từ Excel / CSV'>
       <ImportClient />
     </PageContainer>
   );

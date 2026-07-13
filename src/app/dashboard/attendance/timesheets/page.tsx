@@ -13,7 +13,11 @@ type Row = Awaited<ReturnType<typeof listTimesheets>>[number];
 export default async function TimesheetsPage() {
   const role = await getCurrentRole();
   if (!roleAtLeast(role, 'manager')) {
-    return <PageContainer pageTitle='Bảng công (Timesheet)' access={false}><div /></PageContainer>;
+    return (
+      <PageContainer pageTitle='Bảng công (Timesheet)' access={false}>
+        <div />
+      </PageContainer>
+    );
   }
   const rows = await listTimesheets();
 
@@ -28,10 +32,7 @@ export default async function TimesheetsPage() {
   ];
 
   return (
-    <PageContainer
-      pageTitle='Bảng công (Timesheet)'
-      pageDescription='Tự động tổng hợp công đi làm, đi muộn, về sớm từ dữ liệu check-in/check-out của thiết bị chấm công.'
-    >
+    <PageContainer pageTitle='Bảng công (Timesheet)'>
       <SimpleTable
         columns={columns}
         rows={rows}

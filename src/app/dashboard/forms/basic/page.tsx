@@ -7,10 +7,7 @@ export const metadata = {
 
 export default function Page() {
   return (
-    <PageContainer
-      pageTitle='Basic Form'
-      pageDescription='A comprehensive form demo with all field types.'
-    >
+    <PageContainer pageTitle='Basic Form'>
       <DemoForm />
     </PageContainer>
   );

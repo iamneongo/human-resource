@@ -6,17 +6,22 @@ import {
   listInsuranceTaxConfigs
 } from '@/features/hr/payroll/insurance-tax';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
+import { formatVND } from '@/lib/format';
 
 export const metadata = { title: 'HRM: BHXH & Thuế TNCN' };
 
 const pct = (n: string) => `${(Number(n) * 100).toFixed(2)}%`;
-const vnd = (n: string) => Number(n).toLocaleString('vi-VN') + ' ₫';
+const vnd = formatVND;
 type Row = Awaited<ReturnType<typeof listInsuranceTaxConfigs>>[number];
 
 export default async function InsuranceTaxPage() {
   const role = await getCurrentRole();
   if (!roleAtLeast(role, 'hr')) {
-    return <PageContainer pageTitle='BHXH & Thuế TNCN' access={false}><div /></PageContainer>;
+    return (
+      <PageContainer pageTitle='BHXH & Thuế TNCN' access={false}>
+        <div />
+      </PageContainer>
+    );
   }
   const rows = await listInsuranceTaxConfigs();
   const columns: Column<Row>[] = [
@@ -30,7 +35,6 @@ export default async function InsuranceTaxPage() {
   return (
     <PageContainer
       pageTitle='BHXH & Thuế TNCN'
-      pageDescription='Cấu hình tỷ lệ đóng BHXH/BHYT/BHTN và biểu thuế lũy tiến từng phần (áp dụng biểu chuẩn VN 7 bậc).'
       pageHeaderAction={
         <EntityFormDialog
           triggerLabel='Thêm cấu hình'
@@ -44,7 +48,13 @@ export default async function InsuranceTaxPage() {
             dependentDeduction: '4400000'
           }}
           fields={[
-            { name: 'effectiveFrom', label: 'Hiệu lực từ', type: 'date', required: true, colSpan: 2 },
+            {
+              name: 'effectiveFrom',
+              label: 'Hiệu lực từ',
+              type: 'date',
+              required: true,
+              colSpan: 2
+            },
             { name: 'socialInsuranceRate', label: 'Tỷ lệ BHXH (vd 0.08)', type: 'number' },
             { name: 'healthInsuranceRate', label: 'Tỷ lệ BHYT (vd 0.015)', type: 'number' },
             { name: 'unemploymentRate', label: 'Tỷ lệ BHTN (vd 0.01)', type: 'number' },
@@ -54,7 +64,11 @@ export default async function InsuranceTaxPage() {
         />
       }
     >
-      <SimpleTable columns={columns} rows={rows} emptyText='Chưa có cấu hình. Thêm 1 cấu hình để engine tính lương sử dụng.' />
+      <SimpleTable
+        columns={columns}
+        rows={rows}
+        emptyText='Chưa có cấu hình. Thêm 1 cấu hình để engine tính lương sử dụng.'
+      />
     </PageContainer>
   );
 }

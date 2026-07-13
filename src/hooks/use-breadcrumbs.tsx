@@ -49,15 +49,16 @@ const SEGMENT_LABELS: Record<string, string> = {
   budget: 'Ngân sách',
   'career-paths': 'Lộ trình nghề nghiệp',
   org: 'Cơ cấu tổ chức',
+  chart: 'Sơ đồ tổ chức',
+  departments: 'Phòng ban',
+  positions: 'Chức vụ',
+  accounts: 'Liên kết tài khoản',
   profile: 'Hồ sơ cá nhân',
   notifications: 'Thông báo'
 };
 
 function labelFor(segment: string): string {
-  return (
-    SEGMENT_LABELS[segment] ??
-    segment.charAt(0).toUpperCase() + segment.slice(1)
-  );
+  return SEGMENT_LABELS[segment] ?? segment.charAt(0).toUpperCase() + segment.slice(1);
 }
 
 export function useBreadcrumbs() {

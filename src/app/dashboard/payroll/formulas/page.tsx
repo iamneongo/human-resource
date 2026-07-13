@@ -12,19 +12,26 @@ type Row = Awaited<ReturnType<typeof listFormulas>>[number];
 export default async function FormulasPage() {
   const role = await getCurrentRole();
   if (!roleAtLeast(role, 'hr')) {
-    return <PageContainer pageTitle='Công thức tính lương' access={false}><div /></PageContainer>;
+    return (
+      <PageContainer pageTitle='Công thức tính lương' access={false}>
+        <div />
+      </PageContainer>
+    );
   }
   const rows = await listFormulas();
   const columns: Column<Row>[] = [
     { header: 'Mã', cell: (r) => r.code, className: 'font-medium' },
     { header: 'Tên', cell: (r) => r.name },
     { header: 'Biểu thức', cell: (r) => <code className='text-xs'>{r.expression}</code> },
-    { header: 'Trạng thái', cell: (r) => r.isActive ? <Badge>Đang dùng</Badge> : <Badge variant='secondary'>Tạm dừng</Badge> }
+    {
+      header: 'Trạng thái',
+      cell: (r) =>
+        r.isActive ? <Badge>Đang dùng</Badge> : <Badge variant='secondary'>Tạm dừng</Badge>
+    }
   ];
   return (
     <PageContainer
       pageTitle='Công thức tính lương'
-      pageDescription='Định nghĩa công thức lương động dựa trên ngày công thực tế, KPI, doanh số, lương sản phẩm.'
       pageHeaderAction={
         <EntityFormDialog
           triggerLabel='Thêm công thức'
@@ -33,7 +40,13 @@ export default async function FormulasPage() {
           fields={[
             { name: 'code', label: 'Mã', required: true },
             { name: 'name', label: 'Tên công thức', required: true },
-            { name: 'expression', label: 'Biểu thức', required: true, colSpan: 2, placeholder: 'base * workedDays / standardDays + kpi * bonusRate' },
+            {
+              name: 'expression',
+              label: 'Biểu thức',
+              required: true,
+              colSpan: 2,
+              placeholder: 'base * workedDays / standardDays + kpi * bonusRate'
+            },
             { name: 'description', label: 'Mô tả', type: 'textarea' }
           ]}
         />

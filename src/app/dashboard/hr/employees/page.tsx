@@ -2,11 +2,12 @@ import Link from 'next/link';
 
 import PageContainer from '@/components/layout/page-container';
 import { Badge } from '@/components/ui/badge';
+import { buttonVariants } from '@/components/ui/button';
+import { Icons } from '@/components/icons';
 import { listEmployees } from '@/features/hr/employees/actions';
-import { EmployeeCreateDialog } from '@/features/hr/employees/components/employee-create-dialog';
 import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
-import { departmentOptions, positionOptions } from '@/features/hr/common/lookups';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
+import { cn } from '@/lib/utils';
 
 const STATUS_META: Record<
   string,
@@ -46,9 +47,6 @@ export default async function EmployeesPage() {
 
   const rows = await listEmployees();
   const canCreate = roleAtLeast(role, 'hr');
-  const [deptOpts, posOpts] = canCreate
-    ? await Promise.all([departmentOptions(), positionOptions()])
-    : [[], []];
 
   const columns: Column<Row>[] = [
     {
@@ -79,10 +77,14 @@ export default async function EmployeesPage() {
   return (
     <PageContainer
       pageTitle='Hồ sơ nhân viên'
-      pageDescription='Quản lý hồ sơ nhân viên điện tử (HR-01).'
       pageHeaderAction={
         canCreate ? (
-          <EmployeeCreateDialog departmentOptions={deptOpts} positionOptions={posOpts} />
+          <Link
+            href='/dashboard/hr/employees/create'
+            className={cn(buttonVariants(), 'text-xs md:text-sm')}
+          >
+            <Icons.add className='mr-2 h-4 w-4' /> Thêm nhân viên
+          </Link>
         ) : undefined
       }
     >

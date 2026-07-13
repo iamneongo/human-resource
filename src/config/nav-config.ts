@@ -33,8 +33,8 @@ export const navGroups: NavGroup[] = [
           { title: 'Lương & Phúc lợi', url: '/dashboard/hr/salary-info' },
           { title: 'Tài sản cấp phát', url: '/dashboard/hr/assets' },
           { title: 'Khen thưởng / Kỷ luật', url: '/dashboard/hr/rewards' },
-          { title: 'Thôi việc (Offboarding)', url: '/dashboard/hr/offboarding' },
-          { title: 'Báo cáo nhân sự', url: '/dashboard/hr/reports' }
+          { title: 'Thôi việc (Offboarding)', url: '/dashboard/hr/offboarding', disabled: true },
+          { title: 'Báo cáo nhân sự', url: '/dashboard/hr/reports', disabled: true }
         ]
       },
       {
@@ -43,13 +43,17 @@ export const navGroups: NavGroup[] = [
         icon: 'calendar',
         isActive: false,
         items: [
-          { title: 'Ca làm việc', url: '/dashboard/attendance/shifts' },
-          { title: 'Thiết bị chấm công', url: '/dashboard/attendance/devices' },
-          { title: 'Bảng công (Timesheet)', url: '/dashboard/attendance/timesheets' },
-          { title: 'Làm thêm giờ (OT)', url: '/dashboard/attendance/overtime' },
-          { title: 'Nghỉ phép', url: '/dashboard/attendance/leaves' },
-          { title: 'Số dư phép', url: '/dashboard/attendance/leave-balances' },
-          { title: 'Xử lý bất thường', url: '/dashboard/attendance/adjustments' }
+          { title: 'Ca làm việc', url: '/dashboard/attendance/shifts', disabled: true },
+          { title: 'Thiết bị chấm công', url: '/dashboard/attendance/devices', disabled: true },
+          {
+            title: 'Bảng công (Timesheet)',
+            url: '/dashboard/attendance/timesheets',
+            disabled: true
+          },
+          { title: 'Làm thêm giờ (OT)', url: '/dashboard/attendance/overtime', disabled: true },
+          { title: 'Nghỉ phép', url: '/dashboard/attendance/leaves', disabled: true },
+          { title: 'Số dư phép', url: '/dashboard/attendance/leave-balances', disabled: true },
+          { title: 'Xử lý bất thường', url: '/dashboard/attendance/adjustments', disabled: true }
         ]
       },
       {
@@ -73,11 +77,11 @@ export const navGroups: NavGroup[] = [
         icon: 'trendingUp',
         isActive: false,
         items: [
-          { title: 'Mô tả công việc (JD)', url: '/dashboard/performance/jd' },
-          { title: 'Khung năng lực', url: '/dashboard/performance/competencies' },
-          { title: 'KPI / OKR', url: '/dashboard/performance/kpis' },
-          { title: 'Chu kỳ đánh giá', url: '/dashboard/performance/cycles' },
-          { title: 'Báo cáo hiệu suất', url: '/dashboard/performance/reports' }
+          { title: 'Mô tả công việc (JD)', url: '/dashboard/performance/jd', disabled: true },
+          { title: 'Khung năng lực', url: '/dashboard/performance/competencies', disabled: true },
+          { title: 'KPI / OKR', url: '/dashboard/performance/kpis', disabled: true },
+          { title: 'Chu kỳ đánh giá', url: '/dashboard/performance/cycles', disabled: true },
+          { title: 'Báo cáo hiệu suất', url: '/dashboard/performance/reports', disabled: true }
         ]
       },
       {
@@ -86,13 +90,13 @@ export const navGroups: NavGroup[] = [
         icon: 'sparkles',
         isActive: false,
         items: [
-          { title: 'Nhu cầu đào tạo (TNA)', url: '/dashboard/training/needs' },
-          { title: 'Kế hoạch đào tạo', url: '/dashboard/training/plans' },
-          { title: 'Khóa học & Nội dung', url: '/dashboard/training/courses' },
-          { title: 'Ghi danh học viên', url: '/dashboard/training/enrollments' },
-          { title: 'Theo dõi học tập', url: '/dashboard/training/progress' },
-          { title: 'Ngân sách đào tạo', url: '/dashboard/training/budget' },
-          { title: 'Lộ trình nghề nghiệp', url: '/dashboard/training/career-paths' }
+          { title: 'Nhu cầu đào tạo (TNA)', url: '/dashboard/training/needs', disabled: true },
+          { title: 'Kế hoạch đào tạo', url: '/dashboard/training/plans', disabled: true },
+          { title: 'Khóa học & Nội dung', url: '/dashboard/training/courses', disabled: true },
+          { title: 'Ghi danh học viên', url: '/dashboard/training/enrollments', disabled: true },
+          { title: 'Theo dõi học tập', url: '/dashboard/training/progress', disabled: true },
+          { title: 'Ngân sách đào tạo', url: '/dashboard/training/budget', disabled: true },
+          { title: 'Lộ trình nghề nghiệp', url: '/dashboard/training/career-paths', disabled: true }
         ]
       }
     ]
@@ -102,11 +106,16 @@ export const navGroups: NavGroup[] = [
     items: [
       {
         title: 'Cơ cấu tổ chức',
-        url: '/dashboard/org',
+        url: '#',
         icon: 'workspace',
         isActive: false,
-        items: [],
-        access: { role: 'admin' }
+        access: { role: 'admin' },
+        items: [
+          { title: 'Sơ đồ tổ chức', url: '/dashboard/org/chart' },
+          { title: 'Phòng ban', url: '/dashboard/org/departments' },
+          { title: 'Chức vụ', url: '/dashboard/org/positions' },
+          { title: 'Liên kết tài khoản', url: '/dashboard/org/accounts' }
+        ]
       },
       {
         title: 'Import nhân viên',

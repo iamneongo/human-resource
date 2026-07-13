@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { asc } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { salaryScales } from '@/db/schema';
@@ -12,6 +12,45 @@ type Result = { ok: true } | { ok: false; error: string };
 export async function listSalaryScales() {
   await requireRole('hr');
   return db.select().from(salaryScales).orderBy(asc(salaryScales.code)).limit(200);
+}
+
+export async function updateSalaryScale(id: string, v: Record<string, string>): Promise<Result> {
+  try {
+    await requireRole('hr');
+  } catch {
+    return { ok: false, error: 'Không có quyền.' };
+  }
+  try {
+    await db
+      .update(salaryScales)
+      .set({
+        grade: v.grade || undefined,
+        step: v.step ? Number(v.step) : undefined,
+        minSalary: v.minSalary || undefined,
+        maxSalary: v.maxSalary || undefined,
+        coefficient: v.coefficient || null
+      })
+      .where(eq(salaryScales.id, id));
+    revalidatePath('/dashboard/payroll/salary-scales');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
+  }
+}
+
+export async function deleteSalaryScale(id: string): Promise<Result> {
+  try {
+    await requireRole('hr');
+  } catch {
+    return { ok: false, error: 'Không có quyền.' };
+  }
+  try {
+    await db.delete(salaryScales).where(eq(salaryScales.id, id));
+    revalidatePath('/dashboard/payroll/salary-scales');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
+  }
 }
 
 export async function createSalaryScale(v: Record<string, string>): Promise<Result> {

@@ -21,7 +21,11 @@ type Row = Awaited<ReturnType<typeof listPayrollRuns>>[number];
 export default async function PayrollRunsPage() {
   const role = await getCurrentRole();
   if (!roleAtLeast(role, 'hr')) {
-    return <PageContainer pageTitle='Chốt bảng lương' access={false}><div /></PageContainer>;
+    return (
+      <PageContainer pageTitle='Chốt bảng lương' access={false}>
+        <div />
+      </PageContainer>
+    );
   }
   const rows = await listPayrollRuns();
 
@@ -36,14 +40,16 @@ export default async function PayrollRunsPage() {
         </Badge>
       )
     },
-    { header: 'Chốt lúc', cell: (r) => (r.lockedAt ? new Date(r.lockedAt).toLocaleString('vi-VN') : '—') },
+    {
+      header: 'Chốt lúc',
+      cell: (r) => (r.lockedAt ? new Date(r.lockedAt).toLocaleString('vi-VN') : '—')
+    },
     { header: '', cell: (r) => <RunActions id={r.id} status={r.status} /> }
   ];
 
   return (
     <PageContainer
       pageTitle='Chốt bảng lương'
-      pageDescription='Tạo kỳ lương → “Tính & chốt” để engine sinh phiếu lương (lương + phụ cấp + OT − BHXH − thuế TNCN) → Admin duyệt.'
       pageHeaderAction={
         <EntityFormDialog
           triggerLabel='Tạo kỳ lương'

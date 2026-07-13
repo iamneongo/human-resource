@@ -32,6 +32,62 @@ export async function listContracts() {
 
 const TYPES = ['probation', 'fixed_term', 'indefinite', 'seasonal'] as const;
 
+export async function attachContractFile(contractId: string, fileUrl: string): Promise<Result> {
+  try {
+    await requireRole('hr');
+  } catch {
+    return { ok: false, error: 'Không có quyền.' };
+  }
+  try {
+    await db.update(contracts).set({ fileUrl }).where(eq(contracts.id, contractId));
+    revalidatePath('/dashboard/hr/contracts');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
+  }
+}
+
+export async function updateContract(id: string, v: Record<string, string>): Promise<Result> {
+  try {
+    await requireRole('hr');
+  } catch {
+    return { ok: false, error: 'Không có quyền.' };
+  }
+  try {
+    await db
+      .update(contracts)
+      .set({
+        contractNumber: v.contractNumber || undefined,
+        type: (v.type as (typeof TYPES)[number]) || undefined,
+        startDate: v.startDate || undefined,
+        endDate: v.endDate || null,
+        baseSalary: v.baseSalary || undefined,
+        status: (v.status as 'active' | 'expired' | 'terminated') || undefined
+      })
+      .where(eq(contracts.id, id));
+    revalidatePath('/dashboard/hr/contracts');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
+  }
+}
+
+export async function deleteContract(id: string): Promise<Result> {
+  try {
+    await requireRole('hr');
+  } catch {
+    return { ok: false, error: 'Không có quyền.' };
+  }
+  try {
+    // Soft delete: đặt status = terminated
+    await db.update(contracts).set({ status: 'terminated' }).where(eq(contracts.id, id));
+    revalidatePath('/dashboard/hr/contracts');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
+  }
+}
+
 export async function createContract(v: Record<string, string>): Promise<Result> {
   try {
     await requireRole('hr');

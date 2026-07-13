@@ -6,11 +6,7 @@ import { teamInfoContent } from '@/config/infoconfig';
 
 export default function TeamPage() {
   return (
-    <PageContainer
-      pageTitle='Team Management'
-      pageDescription='Manage your workspace team, members, roles, security and more.'
-      infoContent={teamInfoContent}
-    >
+    <PageContainer pageTitle='Team Management' infoContent={teamInfoContent}>
       <OrganizationProfile />
     </PageContainer>
   );

@@ -19,7 +19,10 @@ const KIND_LABEL: Record<string, string> = {
   weekend: 'Cuối tuần',
   holiday: 'Ngày lễ'
 };
-const STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+const STATUS: Record<
+  string,
+  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }
+> = {
   pending: { label: 'Chờ duyệt', variant: 'outline' },
   approved: { label: 'Đã duyệt', variant: 'default' },
   rejected: { label: 'Từ chối', variant: 'destructive' },
@@ -31,7 +34,11 @@ type Row = Awaited<ReturnType<typeof listOvertime>>[number];
 export default async function OvertimePage() {
   const role = await getCurrentRole();
   if (!role) {
-    return <PageContainer pageTitle='Làm thêm giờ (OT)' access={false}><div /></PageContainer>;
+    return (
+      <PageContainer pageTitle='Làm thêm giờ (OT)' access={false}>
+        <div />
+      </PageContainer>
+    );
   }
   const isManager = roleAtLeast(role, 'manager');
   const selfId = isManager ? undefined : await getCurrentEmployeeId();
@@ -87,7 +94,6 @@ export default async function OvertimePage() {
   return (
     <PageContainer
       pageTitle='Làm thêm giờ (OT)'
-      pageDescription='Đăng ký & phê duyệt OT; tự động tính hệ số theo luật (ngày thường ×1.5, cuối tuần ×2, lễ ×3).'
       pageHeaderAction={
         <EntityFormDialog
           triggerLabel='Đăng ký OT'
@@ -96,10 +102,24 @@ export default async function OvertimePage() {
           defaults={{ kind: 'weekday' }}
           fields={[
             ...(empOpts.length
-              ? [{ name: 'employeeId', label: 'Nhân viên', type: 'select' as const, options: empOpts, colSpan: 2 as const }]
+              ? [
+                  {
+                    name: 'employeeId',
+                    label: 'Nhân viên',
+                    type: 'select' as const,
+                    options: empOpts,
+                    colSpan: 2 as const
+                  }
+                ]
               : []),
             { name: 'workDate', label: 'Ngày OT', type: 'date', required: true },
-            { name: 'kind', label: 'Loại ngày', type: 'select', required: true, options: Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label })) },
+            {
+              name: 'kind',
+              label: 'Loại ngày',
+              type: 'select',
+              required: true,
+              options: Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label }))
+            },
             { name: 'fromTime', label: 'Từ (HH:MM)', required: true, placeholder: '18:00' },
             { name: 'toTime', label: 'Đến (HH:MM)', required: true, placeholder: '20:00' },
             { name: 'reason', label: 'Lý do', type: 'textarea' }

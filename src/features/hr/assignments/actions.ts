@@ -7,6 +7,24 @@ import { db } from '@/db';
 import { departments, employees, jobAssignments, positions } from '@/db/schema';
 import { requireRole } from '@/lib/rbac';
 
+export async function getAssignmentsByEmployee(employeeId: string) {
+  await requireRole('manager');
+  return db
+    .select({
+      id: jobAssignments.id,
+      type: jobAssignments.type,
+      effectiveDate: jobAssignments.effectiveDate,
+      note: jobAssignments.note,
+      departmentName: departments.name,
+      positionTitle: positions.title
+    })
+    .from(jobAssignments)
+    .leftJoin(departments, eq(jobAssignments.departmentId, departments.id))
+    .leftJoin(positions, eq(jobAssignments.positionId, positions.id))
+    .where(eq(jobAssignments.employeeId, employeeId))
+    .orderBy(desc(jobAssignments.effectiveDate));
+}
+
 type Result = { ok: true } | { ok: false; error: string };
 
 export async function listAssignments() {
@@ -50,7 +68,19 @@ export async function createAssignment(v: Record<string, string>): Promise<Resul
       effectiveDate: v.effectiveDate,
       note: v.note || null
     });
+
+    // Cập nhật phòng ban/chức vụ hiện tại của nhân viên
+    await db
+      .update(employees)
+      .set({
+        ...(v.departmentId ? { departmentId: v.departmentId } : {}),
+        ...(v.positionId ? { positionId: v.positionId } : {})
+      })
+      .where(eq(employees.id, v.employeeId));
+
     revalidatePath('/dashboard/hr/assignments');
+    revalidatePath(`/dashboard/hr/employees/${v.employeeId}`);
+    revalidatePath('/dashboard/hr/employees');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };

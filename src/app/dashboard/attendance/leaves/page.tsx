@@ -21,7 +21,10 @@ const TYPE_LABEL: Record<string, string> = {
   unpaid: 'Không lương',
   other: 'Khác'
 };
-const STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+const STATUS: Record<
+  string,
+  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }
+> = {
   pending: { label: 'Chờ duyệt', variant: 'outline' },
   approved: { label: 'Đã duyệt', variant: 'default' },
   rejected: { label: 'Từ chối', variant: 'destructive' },
@@ -33,7 +36,11 @@ type Row = Awaited<ReturnType<typeof listLeaves>>[number];
 export default async function LeavesPage() {
   const role = await getCurrentRole();
   if (!role) {
-    return <PageContainer pageTitle='Nghỉ phép' access={false}><div /></PageContainer>;
+    return (
+      <PageContainer pageTitle='Nghỉ phép' access={false}>
+        <div />
+      </PageContainer>
+    );
   }
   const isManager = roleAtLeast(role, 'manager');
   const selfId = isManager ? undefined : await getCurrentEmployeeId();
@@ -89,7 +96,6 @@ export default async function LeavesPage() {
   return (
     <PageContainer
       pageTitle='Nghỉ phép'
-      pageDescription='Đăng ký nghỉ phép trực tuyến; quy trình phê duyệt tự động chuyển cấp quản lý; phép năm được trừ vào số dư.'
       pageHeaderAction={
         <EntityFormDialog
           triggerLabel='Đăng ký nghỉ'
@@ -98,9 +104,23 @@ export default async function LeavesPage() {
           defaults={{ type: 'annual' }}
           fields={[
             ...(empOpts.length
-              ? [{ name: 'employeeId', label: 'Nhân viên', type: 'select' as const, options: empOpts, colSpan: 2 as const }]
+              ? [
+                  {
+                    name: 'employeeId',
+                    label: 'Nhân viên',
+                    type: 'select' as const,
+                    options: empOpts,
+                    colSpan: 2 as const
+                  }
+                ]
               : []),
-            { name: 'type', label: 'Loại phép', type: 'select', required: true, options: Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label })) },
+            {
+              name: 'type',
+              label: 'Loại phép',
+              type: 'select',
+              required: true,
+              options: Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))
+            },
             { name: 'startDate', label: 'Từ ngày', type: 'date', required: true },
             { name: 'endDate', label: 'Đến ngày', type: 'date', required: true },
             { name: 'reason', label: 'Lý do', type: 'textarea' }

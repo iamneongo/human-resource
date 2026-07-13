@@ -23,7 +23,6 @@ export default async function Page(props: pageProps) {
   return (
     <PageContainer
       pageTitle='Products'
-      pageDescription='Manage products (React Query + nuqs table pattern.)'
       infoContent={productInfoContent}
       pageHeaderAction={
         <Link href='/dashboard/product/new' className={cn(buttonVariants(), 'text-xs md:text-sm')}>

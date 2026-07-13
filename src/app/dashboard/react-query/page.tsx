@@ -18,11 +18,7 @@ export default function ReactQueryPage() {
   void queryClient.prefetchQuery(pokemonOptions(25));
 
   return (
-    <PageContainer
-      pageTitle='React Query'
-      pageDescription='Server prefetch + client hydration + suspense query pattern.'
-      infoContent={reactQueryInfoContent}
-    >
+    <PageContainer pageTitle='React Query' infoContent={reactQueryInfoContent}>
       <HydrationBoundary state={dehydrate(queryClient)}>
         <Suspense fallback={<PokemonSkeleton />}>
           <PokemonInfo />
