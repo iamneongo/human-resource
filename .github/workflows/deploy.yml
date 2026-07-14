@@ -67,6 +67,7 @@ jobs:
             NEXT_PUBLIC_CLERK_SIGN_IN_URL=${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
             NEXT_PUBLIC_CLERK_SIGN_UP_URL=${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
             NEXT_PUBLIC_SENTRY_DISABLED=${{ secrets.NEXT_PUBLIC_SENTRY_DISABLED }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
 
       - name: Trigger Dokploy redeploy
         if: github.event_name == 'push' || inputs.deploy == true
