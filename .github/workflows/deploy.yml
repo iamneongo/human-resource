@@ -68,19 +68,19 @@ jobs:
             NEXT_PUBLIC_SENTRY_DISABLED=${{ secrets.NEXT_PUBLIC_SENTRY_DISABLED }}
 
       - name: Trigger Dokploy redeploy
-        if: |
-          (github.event_name == 'push' || inputs.deploy == true) &&
-          secrets.DOKPLOY_URL != '' &&
-          secrets.DOKPLOY_API_KEY != '' &&
-          secrets.DOKPLOY_APPLICATION_ID != ''
+        if: github.event_name == 'push' || inputs.deploy == true
         env:
           DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
           DOKPLOY_APPLICATION_ID: ${{ secrets.DOKPLOY_APPLICATION_ID }}
         run: |
+          if [ -z "${DOKPLOY_URL}" ] || [ -z "${DOKPLOY_API_KEY}" ] || [ -z "${DOKPLOY_APPLICATION_ID}" ]; then
+            echo "Dokploy secrets are not configured; skipping redeploy."
+            exit 0
+          fi
+
           curl --fail --show-error --silent \
             -X POST "${DOKPLOY_URL%/}/api/application.redeploy" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ${DOKPLOY_API_KEY}" \
             -d "{\"applicationId\":\"${DOKPLOY_APPLICATION_ID}\",\"title\":\"GitHub Actions deploy\",\"description\":\"${GITHUB_REPOSITORY}@${GITHUB_SHA}\"}"
-
