@@ -53,7 +53,7 @@ export function EntityFormDialog({
   defaults = {},
   mode = 'create',
   triggerVariant = 'default',
-  successMessage = 'Da luu',
+  successMessage = 'Đã lưu',
   onSuccess
 }: {
   triggerLabel?: string;
@@ -67,7 +67,8 @@ export function EntityFormDialog({
   successMessage?: string;
   onSuccess?: (result: ActionResult<any>) => void;
 }) {
-  const initial = () => Object.fromEntries(fields.map((f) => [f.name, defaults[f.name] ?? '']));
+  const initial = () =>
+    Object.fromEntries(fields.map((field) => [field.name, defaults[field.name] ?? '']));
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>(initial);
   const [pending, startTransition] = useTransition();
@@ -78,42 +79,42 @@ export function EntityFormDialog({
   }
 
   function onSubmit() {
-    for (const f of fields) {
-      if (f.required && !values[f.name]) {
-        toast.error(`Vui long nhap: ${f.label}`);
+    for (const field of fields) {
+      if (field.required && !values[field.name]) {
+        toast.error(`Vui lòng nhập: ${field.label}`);
         return;
       }
     }
 
     startTransition(async () => {
-      const res = await action(values);
-      if (res.ok) {
+      const result = await action(values);
+      if (result.ok) {
         toast.success(successMessage);
         setValues(initial());
         setOpen(false);
-        onSuccess?.(res);
+        onSuccess?.(result);
         router.refresh();
       } else {
-        toast.error(res.error);
+        toast.error(result.error);
       }
     });
   }
 
-  function onOpenChange(v: boolean) {
-    if (v) setValues(initial());
-    setOpen(v);
+  function onOpenChange(nextOpen: boolean) {
+    if (nextOpen) setValues(initial());
+    setOpen(nextOpen);
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         {mode === 'edit' ? (
-          <Button variant='ghost' size='icon' className='h-7 w-7' title='Chinh sua'>
+          <Button variant='ghost' size='icon' className='h-7 w-7' title='Chỉnh sửa'>
             <Icons.edit className='h-3.5 w-3.5' />
           </Button>
         ) : (
           <Button variant={triggerVariant} className='text-xs md:text-sm'>
-            <Icons.add className='mr-2 h-4 w-4' /> {triggerLabel ?? 'Them moi'}
+            <Icons.add className='mr-2 h-4 w-4' /> {triggerLabel ?? 'Thêm mới'}
           </Button>
         )}
       </DialogTrigger>
@@ -124,62 +125,66 @@ export function EntityFormDialog({
         </DialogHeader>
 
         <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-          {fields.map((f) => (
+          {fields.map((field) => (
             <div
-              key={f.name}
+              key={field.name}
               className={
-                f.colSpan === 2 || f.type === 'textarea'
+                field.colSpan === 2 || field.type === 'textarea'
                   ? 'flex flex-col gap-1.5 sm:col-span-2'
                   : 'flex flex-col gap-1.5'
               }
             >
               <Label className='text-xs'>
-                {f.label}
-                {f.required ? ' *' : ''}
+                {field.label}
+                {field.required ? ' *' : ''}
               </Label>
-              {f.type === 'select' && (f.options?.length ?? 0) > 8 ? (
+
+              {field.type === 'select' && (field.options?.length ?? 0) > 8 ? (
                 <Combobox
-                  options={f.options ?? []}
-                  value={values[f.name] ?? ''}
-                  onChange={(v) => set(f.name, v)}
-                  placeholder={f.placeholder ?? 'Chon'}
+                  options={field.options ?? []}
+                  value={values[field.name] ?? ''}
+                  onChange={(value) => set(field.name, value)}
+                  placeholder={field.placeholder ?? 'Chọn'}
                 />
-              ) : f.type === 'select' ? (
-                <Select value={values[f.name] ?? ''} onValueChange={(v) => set(f.name, v)}>
+              ) : field.type === 'select' ? (
+                <Select
+                  value={values[field.name] ?? ''}
+                  onValueChange={(value) => set(field.name, value)}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder={f.placeholder ?? 'Chon'} />
+                    <SelectValue placeholder={field.placeholder ?? 'Chọn'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {(f.options ?? []).map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
+                    {(field.options ?? []).map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              ) : f.type === 'textarea' ? (
+              ) : field.type === 'textarea' ? (
                 <Textarea
-                  value={values[f.name] ?? ''}
-                  onChange={(e) => set(f.name, e.target.value)}
-                  placeholder={f.placeholder}
+                  value={values[field.name] ?? ''}
+                  onChange={(event) => set(field.name, event.target.value)}
+                  placeholder={field.placeholder}
                 />
-              ) : f.type === 'file' ? (
+              ) : field.type === 'file' ? (
                 <FileUpload
-                  value={values[f.name] || undefined}
-                  onChange={(url) => set(f.name, url)}
+                  value={values[field.name] || undefined}
+                  onChange={(url) => set(field.name, url)}
                 />
-              ) : f.type === 'date' ? (
+              ) : field.type === 'date' ? (
                 <DatePickerVN
-                  value={values[f.name] ?? ''}
-                  onChange={(v) => set(f.name, v)}
-                  placeholder={f.placeholder ?? 'Chon ngay'}
+                  value={values[field.name] ?? ''}
+                  onChange={(value) => set(field.name, value)}
+                  placeholder={field.placeholder ?? 'Chọn ngày'}
                 />
               ) : (
                 <Input
-                  type={f.type === 'number' ? 'number' : (f.type ?? 'text')}
-                  value={values[f.name] ?? ''}
-                  onChange={(e) => set(f.name, e.target.value)}
-                  placeholder={f.placeholder}
+                  type={field.type === 'number' ? 'number' : (field.type ?? 'text')}
+                  value={values[field.name] ?? ''}
+                  onChange={(event) => set(field.name, event.target.value)}
+                  placeholder={field.placeholder}
                 />
               )}
             </div>
@@ -188,10 +193,10 @@ export function EntityFormDialog({
 
         <DialogFooter>
           <Button variant='outline' onClick={() => setOpen(false)} disabled={pending}>
-            Huy
+            Hủy
           </Button>
           <Button onClick={onSubmit} disabled={pending}>
-            {pending ? 'Dang luu...' : 'Luu'}
+            {pending ? 'Đang lưu...' : 'Lưu'}
           </Button>
         </DialogFooter>
       </DialogContent>

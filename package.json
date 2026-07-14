@@ -20,10 +20,12 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "bun run src/db/seed.ts",
+    "db:seed:active": "bun run src/db/seeds/active-hr-modules.ts",
     "db:seed:aquaculture": "bun run src/db/seeds/aquaculture.ts",
     "prepare": "husky"
   },
   "dependencies": {
+    "@clerk/localizations": "4.12.0",
     "@clerk/nextjs": "^7.3.5",
     "@dagrejs/dagre": "^3.0.0",
     "@dnd-kit/core": "^6.3.1",

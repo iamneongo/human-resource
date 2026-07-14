@@ -1,43 +1,50 @@
 import PageContainer from '@/components/layout/page-container';
-import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
-import { listTimesheets } from '@/features/hr/attendance/timesheets';
+import { AttendanceBoard } from '@/features/hr/attendance/attendance-board';
+import { getAttendanceBoardData } from '@/features/hr/attendance/board';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
 
-export const metadata = { title: 'HRM: Bảng công (Timesheet)' };
+export const metadata = { title: 'HRM: Bảng chấm công thủ công' };
 
-const fmt = (d: Date | string | null) =>
-  d ? new Date(d).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—';
+type PageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
 
-type Row = Awaited<ReturnType<typeof listTimesheets>>[number];
-
-export default async function TimesheetsPage() {
+export default async function TimesheetsPage(props: PageProps) {
   const role = await getCurrentRole();
   if (!roleAtLeast(role, 'manager')) {
     return (
-      <PageContainer pageTitle='Bảng công (Timesheet)' access={false}>
+      <PageContainer
+        pageTitle='Bảng chấm công thủ công'
+        access={false}
+        accessFallback={
+          <div className='text-muted-foreground text-center text-lg'>
+            Bạn cần vai trò quản lý trở lên để xem bảng chấm công thủ công.
+          </div>
+        }
+      >
         <div />
       </PageContainer>
     );
   }
-  const rows = await listTimesheets();
 
-  const columns: Column<Row>[] = [
-    { header: 'Ngày', cell: (r) => r.workDate, className: 'font-medium' },
-    { header: 'Nhân viên', cell: (r) => r.employeeName ?? '—' },
-    { header: 'Giờ vào', cell: (r) => fmt(r.checkIn) },
-    { header: 'Giờ ra', cell: (r) => fmt(r.checkOut) },
-    { header: 'Giờ công', cell: (r) => r.workedHours ?? '—' },
-    { header: 'Đi muộn (phút)', cell: (r) => r.lateMinutes },
-    { header: 'Về sớm (phút)', cell: (r) => r.earlyLeaveMinutes }
-  ];
+  const searchParams = await props.searchParams;
+  const weekStartValue = searchParams?.weekStart;
+  const weekStart =
+    typeof weekStartValue === 'string'
+      ? weekStartValue
+      : Array.isArray(weekStartValue)
+        ? weekStartValue[0]
+        : undefined;
+
+  const boardData = await getAttendanceBoardData(weekStart);
+  const canEdit = roleAtLeast(role, 'hr');
 
   return (
-    <PageContainer pageTitle='Bảng công (Timesheet)'>
-      <SimpleTable
-        columns={columns}
-        rows={rows}
-        emptyText='Chưa có dữ liệu công. Dữ liệu được tổng hợp sau khi đồng bộ thiết bị chấm công.'
-      />
+    <PageContainer
+      pageTitle='Bảng chấm công thủ công'
+      pageDescription='Nhập công theo tuần bằng lưới sáng/chiều. Công thủ công có thể override dữ liệu timesheet trong cùng ngày và sẽ ảnh hưởng tới tracking định biên ngày cũng như preview payroll khi chạy lại kỳ lương.'
+    >
+      <AttendanceBoard {...boardData} canEdit={canEdit} />
     </PageContainer>
   );
 }

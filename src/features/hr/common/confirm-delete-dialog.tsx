@@ -37,13 +37,13 @@ export function ConfirmDeleteDialog({
 
   function onConfirm() {
     startTransition(async () => {
-      const res = await action();
-      if (res.ok) {
-        toast.success('Đã xoá');
+      const result = await action();
+      if (result.ok) {
+        toast.success('Đã xóa');
         setOpen(false);
         router.refresh();
       } else {
-        toast.error(res.error);
+        toast.error(result.error);
       }
     });
   }
@@ -56,26 +56,26 @@ export function ConfirmDeleteDialog({
           size='icon'
           className='text-destructive hover:text-destructive h-7 w-7'
           disabled={disabled}
-          title='Xoá'
+          title='Xóa'
         >
           <Icons.trash className='h-3.5 w-3.5' />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Xác nhận xoá</AlertDialogTitle>
+          <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
           <AlertDialogDescription>
-            Bạn có chắc muốn xoá <strong>{label}</strong>? Hành động này không thể hoàn tác.
+            Bạn có chắc muốn xóa <strong>{label}</strong>? Hành động này không thể hoàn tác.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>Huỷ</AlertDialogCancel>
+          <AlertDialogCancel disabled={pending}>Hủy</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={pending}
             className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
           >
-            {pending ? 'Đang xoá...' : 'Xoá'}
+            {pending ? 'Đang xóa...' : 'Xóa'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

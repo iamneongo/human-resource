@@ -8,11 +8,12 @@ import {
   text,
   time,
   timestamp,
+  uniqueIndex,
   uuid
 } from 'drizzle-orm/pg-core';
 
 import { employees } from './hr01-employees';
-import { id, timestamps } from './_shared';
+import { departments, id, timestamps } from './_shared';
 
 export const shiftTypeEnum = pgEnum('shift_type', ['office', 'split', 'night', 'rotating']);
 
@@ -192,3 +193,28 @@ export const attendanceWeekLocks = pgTable('attendance_week_locks', {
   note: text('note'),
   ...timestamps
 });
+
+export const dailyStaffingTargets = pgTable(
+  'daily_staffing_targets',
+  {
+    id: id(),
+    workDate: date('work_date').notNull(),
+    departmentId: uuid('department_id')
+      .notNull()
+      .references(() => departments.id),
+    shiftId: uuid('shift_id')
+      .notNull()
+      .references(() => shifts.id),
+    targetHeadcount: integer('target_headcount').notNull().default(0),
+    note: text('note'),
+    updatedBy: text('updated_by').notNull(),
+    ...timestamps
+  },
+  (table) => [
+    uniqueIndex('daily_staffing_targets_work_date_department_shift_idx').on(
+      table.workDate,
+      table.departmentId,
+      table.shiftId
+    )
+  ]
+);

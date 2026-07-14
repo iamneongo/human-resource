@@ -19,6 +19,7 @@ export function SendButton({
 }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+
   if (isPreview) {
     return (
       <Button size='sm' variant='ghost' disabled>
@@ -26,6 +27,7 @@ export function SendButton({
       </Button>
     );
   }
+
   if (sent) {
     return (
       <Button size='sm' variant='ghost' disabled>
@@ -33,6 +35,7 @@ export function SendButton({
       </Button>
     );
   }
+
   return (
     <Button
       size='sm'
@@ -40,12 +43,12 @@ export function SendButton({
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
-          const res = await sendPayslip(id);
-          if (res.ok) {
+          const result = await sendPayslip(id);
+          if (result.ok) {
             toast.success('Đã đánh dấu phát hành nội bộ');
             router.refresh();
           } else {
-            toast.error(res.error);
+            toast.error(result.error);
           }
         })
       }

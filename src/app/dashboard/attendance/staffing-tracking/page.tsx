@@ -1,0 +1,389 @@
+import Link from 'next/link';
+
+import PageContainer from '@/components/layout/page-container';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
+import { ConfirmDeleteDialog } from '@/features/hr/common/confirm-delete-dialog';
+import { departmentOptions } from '@/features/hr/common/lookups';
+import { listShifts } from '@/features/hr/attendance/shifts';
+import {
+  deleteDailyStaffingTarget,
+  getDailyStaffingTracking,
+  upsertDailyStaffingTarget
+} from '@/features/hr/attendance/staffing-tracking';
+import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
+import { formatNumber, formatVND } from '@/lib/format';
+
+export const metadata = { title: 'HRM: Định biên & tracking ngày' };
+
+type PageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function getQueryValue(value: string | string[] | undefined) {
+  return typeof value === 'string' ? value : Array.isArray(value) ? value[0] : '';
+}
+
+export default async function StaffingTrackingPage(props: PageProps) {
+  const role = await getCurrentRole();
+  if (!roleAtLeast(role, 'manager')) {
+    return (
+      <PageContainer
+        pageTitle='Định biên & tracking ngày'
+        access={false}
+        accessFallback={
+          <div className='text-muted-foreground text-center text-lg'>
+            Bạn cần vai trò quản lý trở lên để xem định biên và theo dõi nhân sự theo ngày.
+          </div>
+        }
+      >
+        <div />
+      </PageContainer>
+    );
+  }
+
+  const canEdit = roleAtLeast(role, 'hr');
+  const searchParams = await props.searchParams;
+  const filters = {
+    dateFrom: getQueryValue(searchParams?.dateFrom),
+    dateTo: getQueryValue(searchParams?.dateTo),
+    departmentId: getQueryValue(searchParams?.departmentId),
+    shiftId: getQueryValue(searchParams?.shiftId)
+  };
+
+  const [tracking, departments, shifts] = await Promise.all([
+    getDailyStaffingTracking(filters),
+    departmentOptions(),
+    listShifts()
+  ]);
+
+  return (
+    <PageContainer
+      pageTitle='Định biên & tracking ngày'
+      pageDescription='Theo dõi số người cần, số người đi làm thực tế và forecast chi phí lương theo từng ngày, bộ phận và ca làm việc.'
+      pageHeaderAction={
+        canEdit ? (
+          <EntityFormDialog
+            triggerLabel='Khai báo định biên'
+            title='Khai báo định biên theo ngày'
+            description='Dùng để nhập số người chuẩn cần có cho một bộ phận trong một ca làm việc cụ thể.'
+            action={upsertDailyStaffingTarget}
+            fields={[
+              { name: 'workDate', label: 'Ngày', type: 'date', required: true },
+              {
+                name: 'departmentId',
+                label: 'Bộ phận',
+                type: 'select',
+                required: true,
+                options: departments
+              },
+              {
+                name: 'shiftId',
+                label: 'Ca làm việc',
+                type: 'select',
+                required: true,
+                options: shifts.map((shift) => ({
+                  value: shift.id,
+                  label: `${shift.code} · ${shift.name}`
+                }))
+              },
+              {
+                name: 'targetHeadcount',
+                label: 'Định biên',
+                type: 'number',
+                required: true
+              },
+              {
+                name: 'note',
+                label: 'Ghi chú',
+                type: 'textarea',
+                colSpan: 2
+              }
+            ]}
+            defaults={{
+              workDate: tracking.filters.dateFrom,
+              departmentId: tracking.filters.departmentId,
+              shiftId: tracking.filters.shiftId,
+              targetHeadcount: '0'
+            }}
+            successMessage='Đã lưu định biên ngày'
+          />
+        ) : undefined
+      }
+    >
+      <div className='space-y-6'>
+        <form className='grid gap-3 rounded-2xl border bg-card p-4 md:grid-cols-[1fr_1fr_1fr_1fr_auto] md:items-end'>
+          <div className='space-y-1.5'>
+            <Label htmlFor='dateFrom'>Từ ngày</Label>
+            <Input
+              id='dateFrom'
+              name='dateFrom'
+              type='date'
+              defaultValue={tracking.filters.dateFrom}
+            />
+          </div>
+          <div className='space-y-1.5'>
+            <Label htmlFor='dateTo'>Đến ngày</Label>
+            <Input id='dateTo' name='dateTo' type='date' defaultValue={tracking.filters.dateTo} />
+          </div>
+          <FilterSelect
+            label='Bộ phận'
+            name='departmentId'
+            value={tracking.filters.departmentId}
+            placeholder='Tất cả bộ phận'
+            options={departments}
+          />
+          <FilterSelect
+            label='Ca làm việc'
+            name='shiftId'
+            value={tracking.filters.shiftId}
+            placeholder='Tất cả ca'
+            options={shifts.map((shift) => ({
+              value: shift.id,
+              label: `${shift.code} · ${shift.name}`
+            }))}
+          />
+          <div className='flex gap-2'>
+            <Button type='submit'>Lọc dữ liệu</Button>
+            <Button asChild variant='outline'>
+              <Link href='/dashboard/attendance/staffing-tracking'>Mặc định tuần này</Link>
+            </Button>
+          </div>
+        </form>
+
+        <div className='grid gap-3 md:grid-cols-5'>
+          <SummaryCard
+            title='Bộ phận theo dõi'
+            value={formatNumber(tracking.summary.departmentsTracked)}
+            helper='Có dữ liệu định biên hoặc phát sinh công thực tế'
+          />
+          <SummaryCard
+            title='Tổng định biên'
+            value={formatNumber(tracking.summary.totalTargetHeadcount)}
+            helper='Số người chuẩn cần bố trí trong giai đoạn lọc'
+          />
+          <SummaryCard
+            title='Tổng thực tế'
+            value={formatNumber(tracking.summary.totalActualHeadcount)}
+            helper='Số người thực có mặt từ chấm công'
+          />
+          <SummaryCard
+            title='Thiếu / dư người'
+            value={`${formatNumber(tracking.summary.shortageHeadcount)} / ${formatNumber(tracking.summary.excessHeadcount)}`}
+            helper='Thiếu trước, dư sau'
+          />
+          <SummaryCard
+            title='Forecast chi phí lương'
+            value={formatVND(tracking.summary.estimatedPayrollCost)}
+            helper='Chỉ để theo dõi ngày, chưa ghi vào kỳ lương'
+          />
+        </div>
+
+        <div className='rounded-2xl border bg-card p-4'>
+          <div className='flex flex-col gap-2 md:flex-row md:items-center md:justify-between'>
+            <div>
+              <h2 className='text-base font-semibold'>Bảng định biên theo ngày</h2>
+              <p className='text-muted-foreground text-sm'>
+                Nếu cùng một ngày có cả timesheet và công thủ công, hệ thống ưu tiên công thủ công
+                để tính thực tế và forecast lương.
+              </p>
+            </div>
+            <Button asChild variant='outline'>
+              <Link href='/dashboard/payroll/runs'>Mở kỳ lương để preview/chốt</Link>
+            </Button>
+          </div>
+
+          <div className='mt-4 overflow-x-auto'>
+            <table className='min-w-[1180px] w-full border-collapse text-sm'>
+              <thead className='bg-muted/40'>
+                <tr className='border-b text-left'>
+                  <th className='px-3 py-3 font-medium'>Ngày</th>
+                  <th className='px-3 py-3 font-medium'>Bộ phận</th>
+                  <th className='px-3 py-3 font-medium'>Ca</th>
+                  <th className='px-3 py-3 text-right font-medium'>Định biên</th>
+                  <th className='px-3 py-3 text-right font-medium'>Thực tế</th>
+                  <th className='px-3 py-3 text-right font-medium'>Chênh lệch</th>
+                  <th className='px-3 py-3 text-right font-medium'>Tỷ lệ đáp ứng</th>
+                  <th className='px-3 py-3 text-right font-medium'>Forecast lương</th>
+                  <th className='px-3 py-3 font-medium'>Cảnh báo</th>
+                  {canEdit ? <th className='px-3 py-3 text-right font-medium'>Thao tác</th> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {tracking.rows.length > 0 ? (
+                  tracking.rows.map((row) => (
+                    <tr key={row.id} className='border-b align-top last:border-b-0'>
+                      <td className='px-3 py-3 font-medium'>{row.workDate}</td>
+                      <td className='px-3 py-3'>{row.departmentName}</td>
+                      <td className='px-3 py-3'>
+                        <div className='font-medium'>{row.shiftCode}</div>
+                        <div className='text-muted-foreground text-xs'>{row.shiftName}</div>
+                      </td>
+                      <td className='px-3 py-3 text-right'>{formatNumber(row.targetHeadcount)}</td>
+                      <td className='px-3 py-3 text-right'>
+                        <div className='font-medium'>{formatNumber(row.actualHeadcount)}</div>
+                        <div className='text-muted-foreground text-xs'>
+                          {formatNumber(row.actualWorkdays)} công
+                        </div>
+                      </td>
+                      <td className='px-3 py-3 text-right'>
+                        <Badge
+                          variant={
+                            row.variance === 0
+                              ? 'outline'
+                              : row.variance > 0
+                                ? 'secondary'
+                                : 'destructive'
+                          }
+                        >
+                          {row.variance > 0 ? '+' : ''}
+                          {formatNumber(row.variance)}
+                        </Badge>
+                      </td>
+                      <td className='px-3 py-3 text-right'>{formatNumber(row.coverageRate)}%</td>
+                      <td className='px-3 py-3 text-right font-semibold'>
+                        {formatVND(row.estimatedPayrollCost)}
+                      </td>
+                      <td className='px-3 py-3'>
+                        <div className='flex flex-wrap gap-1'>
+                          {row.warningFlags.length > 0 ? (
+                            row.warningFlags.map((warning) => (
+                              <Badge key={warning} variant='outline' className='text-xs'>
+                                {warning}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className='text-muted-foreground text-xs'>Không có cảnh báo</span>
+                          )}
+                        </div>
+                      </td>
+                      {canEdit ? (
+                        <td className='px-3 py-3'>
+                          <div className='flex justify-end gap-1'>
+                            <EntityFormDialog
+                              mode='edit'
+                              title={`Cập nhật định biên ${row.departmentName} - ${row.shiftCode}`}
+                              description='Chỉnh lại định biên chuẩn cho dòng tracking này.'
+                              action={upsertDailyStaffingTarget}
+                              defaults={{
+                                workDate: row.workDate,
+                                departmentId: row.departmentId,
+                                shiftId: row.shiftId,
+                                targetHeadcount: String(row.targetHeadcount),
+                                note: row.note ?? ''
+                              }}
+                              fields={[
+                                { name: 'workDate', label: 'Ngày', type: 'date', required: true },
+                                {
+                                  name: 'departmentId',
+                                  label: 'Bộ phận',
+                                  type: 'select',
+                                  required: true,
+                                  options: departments
+                                },
+                                {
+                                  name: 'shiftId',
+                                  label: 'Ca làm việc',
+                                  type: 'select',
+                                  required: true,
+                                  options: shifts.map((shift) => ({
+                                    value: shift.id,
+                                    label: `${shift.code} · ${shift.name}`
+                                  }))
+                                },
+                                {
+                                  name: 'targetHeadcount',
+                                  label: 'Định biên',
+                                  type: 'number',
+                                  required: true
+                                },
+                                {
+                                  name: 'note',
+                                  label: 'Ghi chú',
+                                  type: 'textarea',
+                                  colSpan: 2
+                                }
+                              ]}
+                              successMessage='Đã cập nhật định biên ngày'
+                            />
+                            {row.targetId ? (
+                              <ConfirmDeleteDialog
+                                label={`định biên ${row.departmentName} - ${row.shiftCode} ngày ${row.workDate}`}
+                                action={deleteDailyStaffingTarget.bind(null, row.targetId)}
+                              />
+                            ) : null}
+                          </div>
+                        </td>
+                      ) : null}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={canEdit ? 10 : 9}
+                      className='text-muted-foreground px-4 py-10 text-center'
+                    >
+                      Chưa có dữ liệu định biên hoặc công thực tế trong phạm vi lọc. Hãy khai báo
+                      định biên hoặc kiểm tra lại dữ liệu chấm công.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </PageContainer>
+  );
+}
+
+function SummaryCard({ title, value, helper }: { title: string; value: string; helper: string }) {
+  return (
+    <Card className='shadow-sm'>
+      <CardHeader className='pb-2'>
+        <CardTitle className='text-sm font-medium'>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className='text-2xl font-semibold'>{value}</div>
+        <p className='text-muted-foreground mt-1 text-xs leading-5'>{helper}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FilterSelect({
+  label,
+  name,
+  value,
+  placeholder,
+  options
+}: {
+  label: string;
+  name: string;
+  value: string;
+  placeholder: string;
+  options: Array<{ value: string; label: string }>;
+}) {
+  return (
+    <div className='space-y-1.5'>
+      <Label htmlFor={name}>{label}</Label>
+      <select
+        id={name}
+        name={name}
+        defaultValue={value}
+        className='border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none'
+      >
+        <option value=''>{placeholder}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}

@@ -10,11 +10,8 @@ export type Column<T> = {
 };
 
 /**
- * Bảng dùng chung — nay render qua data table (kiểu tablecn): tìm kiếm,
- * sắp xếp theo cột, ẩn/hiện cột, phân trang. Giữ nguyên API `Column` cũ.
- *
- * Là Server Component: render sẵn từng ô thành ReactNode (serializable) rồi
- * chuyển cho client table, nên không vi phạm ranh giới RSC.
+ * Bảng dùng chung cho các màn nghiệp vụ HRM.
+ * Render server-side rồi chuyển sang data table client để có tìm kiếm, sắp xếp và phân trang.
  */
 export function SimpleTable<T extends { id: string }>({
   columns,
@@ -25,10 +22,11 @@ export function SimpleTable<T extends { id: string }>({
   rows: T[];
   emptyText?: string;
 }) {
-  const headers = columns.map((c) => c.header);
+  const headers = columns.map((column) => column.header);
   const data: TableRowData[] = rows.map((row) => {
-    const cells = columns.map((c) => c.cell(row));
+    const cells = columns.map((column) => column.cell(row));
     const sort = cells.map(nodeToText);
+
     return {
       id: row.id,
       cells,
