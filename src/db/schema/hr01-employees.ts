@@ -1,6 +1,18 @@
-import { date, foreignKey, jsonb, numeric, pgEnum, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import {
+  date,
+  foreignKey,
+  integer,
+  jsonb,
+  numeric,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid
+} from 'drizzle-orm/pg-core';
 
 import { costCenters, departments, id, positions, timestamps } from './_shared';
+import { files } from './files';
 
 export const employeeGenderEnum = pgEnum('employee_gender', ['male', 'female', 'other']);
 
@@ -122,6 +134,12 @@ export const contracts = pgTable('contracts', {
   signDate: date('sign_date'), // ngày ký HĐLĐ
   status: contractStatusEnum('status').notNull().default('active'),
   fileUrl: text('file_url'),
+  fileId: uuid('file_id').references(() => files.id),
+  fileName: text('file_name'),
+  fileMimeType: text('file_mime_type'),
+  fileSize: integer('file_size'),
+  fileUploadedBy: text('file_uploaded_by'),
+  fileUploadedAt: timestamp('file_uploaded_at', { withTimezone: true }),
   ...timestamps
 });
 

@@ -2,15 +2,18 @@
 
 import * as React from 'react';
 
-import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
-import { ContractViewerSheet } from './contract-viewer';
+import { Button } from '@/components/ui/button';
+
 import { ContractUploadDialog } from './contract-upload-dialog';
+import { ContractViewerSheet } from './contract-viewer';
 
 type Props = {
   contractId: string;
   contractNumber: string;
   fileUrl: string | null;
+  fileName?: string | null;
+  fileMimeType?: string | null;
   canUpload: boolean;
 };
 
@@ -18,6 +21,8 @@ export function ContractFileCell({
   contractId,
   contractNumber,
   fileUrl: initialFileUrl,
+  fileName,
+  fileMimeType,
   canUpload
 }: Props) {
   const [fileUrl, setFileUrl] = React.useState(initialFileUrl);
@@ -40,7 +45,9 @@ export function ContractFileCell({
           open={viewerOpen}
           onClose={() => setViewerOpen(false)}
           fileUrl={fileUrl}
-          title={`Hợp đồng ${contractNumber}`}
+          title={`Hop dong ${contractNumber}`}
+          filename={fileName}
+          mimeType={fileMimeType}
         />
       </>
     );
@@ -57,7 +64,7 @@ export function ContractFileCell({
         onClick={() => setUploadOpen(true)}
       >
         <Icons.upload className='size-3.5' />
-        Đính kèm
+        Dinh kem file
       </Button>
       <ContractUploadDialog
         open={uploadOpen}

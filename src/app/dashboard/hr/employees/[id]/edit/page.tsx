@@ -55,10 +55,26 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
           soCccd: emp.soCccd ?? '',
           dateOfBirth: emp.dateOfBirth ?? '',
           gender: (emp.gender as 'male' | 'female' | 'other') ?? undefined,
+          address: emp.address ?? '',
+          maritalStatus:
+            (emp.maritalStatus as 'single' | 'married' | 'divorced' | 'widowed' | 'other') ??
+            undefined,
           hireDate: emp.hireDate ?? '',
+          seniorityDate: emp.seniorityDate ?? '',
+          probationEndDate: emp.probationEndDate ?? '',
+          resignDate: emp.resignDate ?? '',
+          resignReason: emp.resignReason ?? '',
           status: (emp.status as 'active' | 'probation' | 'on_leave' | 'terminated') ?? 'active',
-          departmentId: '',
-          positionId: ''
+          departmentId: emp.departmentId ?? '',
+          positionId: emp.positionId ?? '',
+          birthPlace: emp.birthPlace ?? '',
+          cccdIssueDate: emp.cccdIssueDate ?? '',
+          cccdIssuePlace: emp.cccdIssuePlace ?? '',
+          nationality: emp.nationality ?? '',
+          permanentAddress: emp.permanentAddress ?? '',
+          educationLevel: emp.educationLevel ?? '',
+          major: emp.major ?? '',
+          jobTitle: emp.jobTitle ?? ''
         }}
         action={updateAction}
         cancelHref={`/dashboard/hr/employees/${id}`}

@@ -10,11 +10,11 @@ import { requireRole } from '@/lib/rbac';
 type Result = { ok: true } | { ok: false; error: string };
 
 export async function listSalaryInfos() {
-  // Dữ liệu lương nhạy cảm -> chỉ HR trở lên.
   await requireRole('hr');
   return db
     .select({
       id: salaryInfos.id,
+      employeeId: salaryInfos.employeeId,
       baseSalary: salaryInfos.baseSalary,
       fixedAllowance: salaryInfos.fixedAllowance,
       commercialInsurancePackage: salaryInfos.commercialInsurancePackage,
@@ -44,6 +44,47 @@ export async function createSalaryInfo(v: Record<string, string>): Promise<Resul
       commercialInsurancePackage: v.commercialInsurancePackage || null,
       effectiveFrom: v.effectiveFrom
     });
+    revalidatePath('/dashboard/hr/salary-info');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
+  }
+}
+
+export async function updateSalaryInfo(id: string, v: Record<string, string>): Promise<Result> {
+  try {
+    await requireRole('hr');
+  } catch {
+    return { ok: false, error: 'Không có quyền.' };
+  }
+  if (!v.baseSalary || !v.effectiveFrom) {
+    return { ok: false, error: 'Thiếu thông tin bắt buộc.' };
+  }
+  try {
+    await db
+      .update(salaryInfos)
+      .set({
+        baseSalary: v.baseSalary,
+        fixedAllowance: v.fixedAllowance || '0',
+        commercialInsurancePackage: v.commercialInsurancePackage || null,
+        effectiveFrom: v.effectiveFrom
+      })
+      .where(eq(salaryInfos.id, id));
+    revalidatePath('/dashboard/hr/salary-info');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
+  }
+}
+
+export async function deleteSalaryInfo(id: string): Promise<Result> {
+  try {
+    await requireRole('hr');
+  } catch {
+    return { ok: false, error: 'Không có quyền.' };
+  }
+  try {
+    await db.delete(salaryInfos).where(eq(salaryInfos.id, id));
     revalidatePath('/dashboard/hr/salary-info');
     return { ok: true };
   } catch (e) {

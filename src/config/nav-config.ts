@@ -1,7 +1,7 @@
 import { NavGroup } from '@/types';
 
 /**
- * HRM navigation — cấu trúc theo kiểu ứng dụng.
+ * HRM navigation - cấu trúc theo kiểu ứng dụng.
  * Visibility ở đây chỉ để UX; phân quyền thực thi server-side qua `requireRole()`.
  */
 export const navGroups: NavGroup[] = [
@@ -43,17 +43,13 @@ export const navGroups: NavGroup[] = [
         icon: 'calendar',
         isActive: false,
         items: [
-          { title: 'Ca làm việc', url: '/dashboard/attendance/shifts', disabled: true },
+          { title: 'Ca làm việc', url: '/dashboard/attendance/shifts' },
           { title: 'Thiết bị chấm công', url: '/dashboard/attendance/devices', disabled: true },
-          {
-            title: 'Bảng công (Timesheet)',
-            url: '/dashboard/attendance/timesheets',
-            disabled: true
-          },
-          { title: 'Làm thêm giờ (OT)', url: '/dashboard/attendance/overtime', disabled: true },
-          { title: 'Nghỉ phép', url: '/dashboard/attendance/leaves', disabled: true },
-          { title: 'Số dư phép', url: '/dashboard/attendance/leave-balances', disabled: true },
-          { title: 'Xử lý bất thường', url: '/dashboard/attendance/adjustments', disabled: true }
+          { title: 'Bảng công (Timesheet)', url: '/dashboard/attendance/timesheets' },
+          { title: 'Làm thêm giờ (OT)', url: '/dashboard/attendance/overtime' },
+          { title: 'Nghỉ phép', url: '/dashboard/attendance/leaves' },
+          { title: 'Số dư phép', url: '/dashboard/attendance/leave-balances' },
+          { title: 'Xử lý bất thường', url: '/dashboard/attendance/adjustments' }
         ]
       },
       {
@@ -78,25 +74,14 @@ export const navGroups: NavGroup[] = [
         isActive: false,
         items: [
           { title: 'Mô tả công việc (JD)', url: '/dashboard/performance/jd', disabled: true },
-          { title: 'Khung năng lực', url: '/dashboard/performance/competencies', disabled: true },
+          {
+            title: 'Khung năng lực',
+            url: '/dashboard/performance/competencies',
+            disabled: true
+          },
           { title: 'KPI / OKR', url: '/dashboard/performance/kpis', disabled: true },
           { title: 'Chu kỳ đánh giá', url: '/dashboard/performance/cycles', disabled: true },
           { title: 'Báo cáo hiệu suất', url: '/dashboard/performance/reports', disabled: true }
-        ]
-      },
-      {
-        title: 'Đào tạo',
-        url: '#',
-        icon: 'sparkles',
-        isActive: false,
-        items: [
-          { title: 'Nhu cầu đào tạo (TNA)', url: '/dashboard/training/needs', disabled: true },
-          { title: 'Kế hoạch đào tạo', url: '/dashboard/training/plans', disabled: true },
-          { title: 'Khóa học & Nội dung', url: '/dashboard/training/courses', disabled: true },
-          { title: 'Ghi danh học viên', url: '/dashboard/training/enrollments', disabled: true },
-          { title: 'Theo dõi học tập', url: '/dashboard/training/progress', disabled: true },
-          { title: 'Ngân sách đào tạo', url: '/dashboard/training/budget', disabled: true },
-          { title: 'Lộ trình nghề nghiệp', url: '/dashboard/training/career-paths', disabled: true }
         ]
       }
     ]

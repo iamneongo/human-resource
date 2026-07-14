@@ -1,4 +1,3 @@
-/** Biểu thuế TNCN lũy tiến từng phần (VN, thu nhập tính thuế/tháng). */
 export const DEFAULT_TAX_BRACKETS: Array<{ upTo: number | null; rate: number }> = [
   { upTo: 5_000_000, rate: 0.05 },
   { upTo: 10_000_000, rate: 0.1 },
@@ -11,6 +10,7 @@ export const DEFAULT_TAX_BRACKETS: Array<{ upTo: number | null; rate: number }> 
 
 export const PAYROLL_RUN_STATUS_LABEL: Record<string, string> = {
   draft: 'Nháp',
+  previewed: 'Đã preview',
   calculating: 'Đang tính',
   locked: 'Đã chốt',
   approving: 'Chờ duyệt',

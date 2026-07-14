@@ -1,11 +1,12 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Icons } from '@/components/icons';
-import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
 import { ConfirmDeleteDialog } from '@/features/hr/common/confirm-delete-dialog';
+import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
 import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
-import { StatusBadge } from '@/features/hr/common/status-badge';
+import { CreateContractFlowDialog } from '@/features/hr/contracts/create-contract-flow-dialog';
 import { ContractExpiryBadge } from '@/features/hr/employees/components/contract-expiry-badge';
-import { createContract, updateContract, deleteContract } from '@/features/hr/contracts/actions';
+import { StatusBadge } from '@/features/hr/common/status-badge';
+import { createContract, deleteContract, updateContract } from '@/features/hr/contracts/actions';
 import { getEmployeeContracts } from '@/features/hr/employees/actions';
 import { getContractExpiryStatus } from '@/lib/contract-utils';
 import { formatVND } from '@/lib/format';
@@ -21,7 +22,7 @@ const CONTRACT_TYPE_OPTS = [
 ];
 
 const CONTRACT_TYPE: Record<string, string> = Object.fromEntries(
-  CONTRACT_TYPE_OPTS.map((o) => [o.value, o.label])
+  CONTRACT_TYPE_OPTS.map((option) => [option.value, option.label])
 );
 
 const STATUS_OPTS = [
@@ -56,45 +57,49 @@ export async function ContractsTab({
 }) {
   const contracts = await getEmployeeContracts(employeeId);
   const expiring = contracts.filter(
-    (c) => c.status === 'active' && getContractExpiryStatus(c.endDate) === 'warning'
+    (contract) =>
+      contract.status === 'active' && getContractExpiryStatus(contract.endDate) === 'warning'
   );
 
-  async function addContract(v: Record<string, string>) {
+  async function addContract(values: Record<string, string>) {
     'use server';
-    return createContract({ ...v, employeeId });
+    return createContract({ ...values, employeeId });
   }
 
-  const cols: Column<Row>[] = [
-    { header: 'Số HĐ', cell: (c) => c.contractNumber, className: 'font-medium' },
-    { header: 'Loại', cell: (c) => CONTRACT_TYPE[c.type] ?? c.type },
-    { header: 'Từ ngày', cell: (c) => c.startDate },
-    { header: 'Đến ngày', cell: (c) => c.endDate ?? '—' },
-    { header: 'Lương HĐ', cell: (c) => formatVND(c.baseSalary) },
-    { header: 'Trạng thái', cell: (c) => <StatusBadge status={c.status} prefix='contract' /> },
-    { header: 'Hạn', cell: (c) => <ContractExpiryBadge endDate={c.endDate} /> },
+  const columns: Column<Row>[] = [
+    { header: 'Số HĐ', cell: (contract) => contract.contractNumber, className: 'font-medium' },
+    { header: 'Loại', cell: (contract) => CONTRACT_TYPE[contract.type] ?? contract.type },
+    { header: 'Từ ngày', cell: (contract) => contract.startDate },
+    { header: 'Đến ngày', cell: (contract) => contract.endDate ?? '—' },
+    { header: 'Lương HĐ', cell: (contract) => formatVND(contract.baseSalary) },
+    {
+      header: 'Trạng thái',
+      cell: (contract) => <StatusBadge status={contract.status} prefix='contract' />
+    },
+    { header: 'Hạn', cell: (contract) => <ContractExpiryBadge endDate={contract.endDate} /> },
     ...(canEdit
       ? [
           {
             header: '',
-            cell: (c: Row) => (
+            cell: (contract: Row) => (
               <div className='flex justify-end gap-1'>
                 <EntityFormDialog
                   mode='edit'
-                  title={`Sửa HĐ: ${c.contractNumber}`}
-                  action={updateContract.bind(null, c.id)}
+                  title={`Sửa HĐ: ${contract.contractNumber}`}
+                  action={updateContract.bind(null, contract.id)}
                   defaults={{
-                    contractNumber: c.contractNumber,
-                    type: c.type,
-                    startDate: c.startDate,
-                    endDate: c.endDate ?? '',
-                    baseSalary: c.baseSalary,
-                    status: c.status
+                    contractNumber: contract.contractNumber,
+                    type: contract.type,
+                    startDate: contract.startDate,
+                    endDate: contract.endDate ?? '',
+                    baseSalary: contract.baseSalary,
+                    status: contract.status
                   }}
                   fields={CONTRACT_FIELDS}
                 />
                 <ConfirmDeleteDialog
-                  label={`HĐ ${c.contractNumber}`}
-                  action={deleteContract.bind(null, c.id)}
+                  label={`HĐ ${contract.contractNumber}`}
+                  action={deleteContract.bind(null, contract.id)}
                 />
               </div>
             )
@@ -112,22 +117,34 @@ export async function ContractsTab({
             Hợp đồng sắp hết hạn
           </AlertTitle>
           <AlertDescription className='text-amber-700 dark:text-amber-300'>
-            {expiring.map((c) => `HĐ ${c.contractNumber} hết hạn ${c.endDate}`).join(' · ')}
+            {expiring
+              .map((contract) => `HĐ ${contract.contractNumber} hết hạn ${contract.endDate}`)
+              .join(' · ')}
           </AlertDescription>
         </Alert>
       )}
-      <div className='flex items-center justify-between'>
-        <p className='text-muted-foreground text-sm'>{contracts.length} hợp đồng</p>
-        {canEdit && (
-          <EntityFormDialog
+
+      <div className='flex items-center justify-between gap-3'>
+        <div className='space-y-1'>
+          <p className='text-muted-foreground text-sm'>{contracts.length} hợp đồng</p>
+          {canEdit ? (
+            <p className='text-muted-foreground text-xs'>
+              Sau khi lưu hợp đồng, hệ thống sẽ mở ngay bước đính kèm tài liệu nếu bạn muốn upload
+              file.
+            </p>
+          ) : null}
+        </div>
+        {canEdit ? (
+          <CreateContractFlowDialog
             triggerLabel='Thêm hợp đồng'
             title='Thêm hợp đồng lao động'
             action={addContract}
             fields={CONTRACT_FIELDS}
           />
-        )}
+        ) : null}
       </div>
-      <SimpleTable columns={cols} rows={contracts} emptyText='Chưa có hợp đồng lao động.' />
+
+      <SimpleTable columns={columns} rows={contracts} emptyText='Chưa có hợp đồng lao động.' />
     </div>
   );
 }

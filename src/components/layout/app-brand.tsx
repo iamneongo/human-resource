@@ -1,8 +1,8 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 
-import { Icons } from '@/components/icons';
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -10,16 +10,23 @@ import {
   useSidebar
 } from '@/components/ui/sidebar';
 
-/** Thương hiệu ứng dụng ở đầu sidebar (thay cho org switcher). */
 export function AppBrand() {
   const { state } = useSidebar();
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <SidebarMenuButton size='lg' asChild>
           <Link href='/dashboard/overview'>
-            <div className='bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg'>
-              <Icons.employee className='size-4' />
+            <div className='bg-sidebar-primary/8 ring-sidebar-primary/12 flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg ring-1'>
+              <Image
+                src='/brand/app-logo.png'
+                alt='Nhân sự HRM'
+                width={24}
+                height={24}
+                className='size-6 object-contain'
+                priority
+              />
             </div>
             <div
               className={`grid flex-1 text-left text-sm leading-tight transition-all duration-200 ease-in-out ${

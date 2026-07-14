@@ -14,12 +14,7 @@ import {
 import { employees } from './hr01-employees';
 import { id, timestamps } from './_shared';
 
-export const shiftTypeEnum = pgEnum('shift_type', [
-  'office',
-  'split',
-  'night',
-  'rotating'
-]);
+export const shiftTypeEnum = pgEnum('shift_type', ['office', 'split', 'night', 'rotating']);
 
 export const leaveTypeEnum = pgEnum('leave_type', [
   'annual',
@@ -38,6 +33,7 @@ export const approvalStatusEnum = pgEnum('approval_status', [
 ]);
 
 export const otKindEnum = pgEnum('ot_kind', ['weekday', 'weekend', 'holiday']);
+export const manualAttendanceSourceEnum = pgEnum('manual_attendance_source', ['manual']);
 
 /** Cấu hình ca làm việc */
 export const shifts = pgTable('shifts', {
@@ -48,9 +44,7 @@ export const shifts = pgTable('shifts', {
   startTime: time('start_time').notNull(),
   endTime: time('end_time').notNull(),
   breakMinutes: integer('break_minutes').notNull().default(0),
-  standardHours: numeric('standard_hours', { precision: 5, scale: 2 })
-    .notNull()
-    .default('8'),
+  standardHours: numeric('standard_hours', { precision: 5, scale: 2 }).notNull().default('8'),
   ...timestamps
 });
 
@@ -106,9 +100,7 @@ export const overtimeRequests = pgTable('overtime_requests', {
   fromTime: timestamp('from_time', { withTimezone: true }).notNull(),
   toTime: timestamp('to_time', { withTimezone: true }).notNull(),
   kind: otKindEnum('kind').notNull().default('weekday'),
-  coefficient: numeric('coefficient', { precision: 4, scale: 2 })
-    .notNull()
-    .default('1.5'),
+  coefficient: numeric('coefficient', { precision: 4, scale: 2 }).notNull().default('1.5'),
   hours: numeric('hours', { precision: 5, scale: 2 }),
   reason: text('reason'),
   status: approvalStatusEnum('status').notNull().default('pending'),
@@ -139,15 +131,9 @@ export const leaveBalances = pgTable('leave_balances', {
     .notNull()
     .references(() => employees.id),
   year: integer('year').notNull(),
-  entitledDays: numeric('entitled_days', { precision: 5, scale: 2 })
-    .notNull()
-    .default('12'),
-  accruedDays: numeric('accrued_days', { precision: 5, scale: 2 })
-    .notNull()
-    .default('0'),
-  usedDays: numeric('used_days', { precision: 5, scale: 2 })
-    .notNull()
-    .default('0'),
+  entitledDays: numeric('entitled_days', { precision: 5, scale: 2 }).notNull().default('12'),
+  accruedDays: numeric('accrued_days', { precision: 5, scale: 2 }).notNull().default('0'),
+  usedDays: numeric('used_days', { precision: 5, scale: 2 }).notNull().default('0'),
   ...timestamps
 });
 
@@ -163,5 +149,46 @@ export const attendanceAdjustments = pgTable('attendance_adjustments', {
   requestedCheckOut: timestamp('requested_check_out', { withTimezone: true }),
   status: approvalStatusEnum('status').notNull().default('pending'),
   approverId: uuid('approver_id').references(() => employees.id),
+  ...timestamps
+});
+
+export const manualAttendanceEntries = pgTable('manual_attendance_entries', {
+  id: id(),
+  employeeId: uuid('employee_id')
+    .notNull()
+    .references(() => employees.id),
+  workDate: date('work_date').notNull(),
+  shiftId: uuid('shift_id').references(() => shifts.id),
+  morning: boolean('morning').notNull().default(false),
+  afternoon: boolean('afternoon').notNull().default(false),
+  source: manualAttendanceSourceEnum('source').notNull().default('manual'),
+  note: text('note'),
+  updatedBy: text('updated_by').notNull(),
+  ...timestamps
+});
+
+export const manualAttendanceAudits = pgTable('manual_attendance_audits', {
+  id: id(),
+  employeeId: uuid('employee_id')
+    .notNull()
+    .references(() => employees.id),
+  workDate: date('work_date').notNull(),
+  shiftId: uuid('shift_id').references(() => shifts.id),
+  morning: boolean('morning').notNull().default(false),
+  afternoon: boolean('afternoon').notNull().default(false),
+  note: text('note'),
+  action: text('action').notNull(),
+  actorUserId: text('actor_user_id').notNull(),
+  actorEmployeeId: uuid('actor_employee_id').references(() => employees.id),
+  ...timestamps
+});
+
+export const attendanceWeekLocks = pgTable('attendance_week_locks', {
+  id: id(),
+  weekStart: date('week_start').notNull(),
+  weekEnd: date('week_end').notNull(),
+  lockedAt: timestamp('locked_at', { withTimezone: true }),
+  lockedBy: text('locked_by'),
+  note: text('note'),
   ...timestamps
 });
