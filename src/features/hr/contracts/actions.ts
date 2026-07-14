@@ -176,7 +176,9 @@ export async function deleteContract(id: string): Promise<Result> {
   }
 }
 
-export async function createContract(v: Record<string, string>): Promise<Result> {
+export async function createContract(
+  v: Record<string, string>
+): Promise<Result<{ id: string; contractNumber: string; employeeId: string }>> {
   try {
     await requireRole('hr');
   } catch {
@@ -189,17 +191,25 @@ export async function createContract(v: Record<string, string>): Promise<Result>
     return { ok: false, error: 'Loại hợp đồng không hợp lệ.' };
   }
   try {
-    await db.insert(contracts).values({
-      employeeId: v.employeeId,
-      contractNumber: v.contractNumber,
-      type: v.type as (typeof TYPES)[number],
-      startDate: v.startDate,
-      endDate: v.endDate || null,
-      baseSalary: v.baseSalary,
-      status: 'active'
-    });
+    const [created] = await db
+      .insert(contracts)
+      .values({
+        employeeId: v.employeeId,
+        contractNumber: v.contractNumber,
+        type: v.type as (typeof TYPES)[number],
+        startDate: v.startDate,
+        endDate: v.endDate || null,
+        baseSalary: v.baseSalary,
+        status: 'active'
+      })
+      .returning({
+        id: contracts.id,
+        contractNumber: contracts.contractNumber,
+        employeeId: contracts.employeeId
+      });
+    if (!created) return { ok: false, error: 'Khong tao duoc hop dong.' };
     revalidateContractViews(v.employeeId);
-    return { ok: true };
+    return { ok: true, data: created };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
   }

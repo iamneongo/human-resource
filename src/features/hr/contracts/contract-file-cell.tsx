@@ -45,7 +45,7 @@ export function ContractFileCell({
           open={viewerOpen}
           onClose={() => setViewerOpen(false)}
           fileUrl={fileUrl}
-          title={`Hợp đồng ${contractNumber}`}
+          title={`Hop dong ${contractNumber}`}
           filename={fileName}
           mimeType={fileMimeType}
         />
@@ -64,7 +64,7 @@ export function ContractFileCell({
         onClick={() => setUploadOpen(true)}
       >
         <Icons.upload className='size-3.5' />
-        Đính kèm
+        Dinh kem file
       </Button>
       <ContractUploadDialog
         open={uploadOpen}

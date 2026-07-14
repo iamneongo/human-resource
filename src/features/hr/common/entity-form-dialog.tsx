@@ -42,7 +42,7 @@ export type FieldConfig = {
   colSpan?: 1 | 2;
 };
 
-type ActionResult = { ok: true } | { ok: false; error: string };
+type ActionResult<TData = void> = { ok: true; data?: TData } | { ok: false; error: string };
 
 export function EntityFormDialog({
   triggerLabel,
@@ -52,16 +52,20 @@ export function EntityFormDialog({
   action,
   defaults = {},
   mode = 'create',
-  triggerVariant = 'default'
+  triggerVariant = 'default',
+  successMessage = 'Da luu',
+  onSuccess
 }: {
   triggerLabel?: string;
   title: string;
   description?: string;
   fields: FieldConfig[];
-  action: (values: Record<string, string>) => Promise<ActionResult>;
+  action: (values: Record<string, string>) => Promise<ActionResult<any>>;
   defaults?: Record<string, string>;
   mode?: 'create' | 'edit';
   triggerVariant?: 'default' | 'outline' | 'ghost';
+  successMessage?: string;
+  onSuccess?: (result: ActionResult<any>) => void;
 }) {
   const initial = () => Object.fromEntries(fields.map((f) => [f.name, defaults[f.name] ?? '']));
   const [open, setOpen] = useState(false);
@@ -76,16 +80,18 @@ export function EntityFormDialog({
   function onSubmit() {
     for (const f of fields) {
       if (f.required && !values[f.name]) {
-        toast.error(`Vui lòng nhập: ${f.label}`);
+        toast.error(`Vui long nhap: ${f.label}`);
         return;
       }
     }
+
     startTransition(async () => {
       const res = await action(values);
       if (res.ok) {
-        toast.success('Đã lưu');
+        toast.success(successMessage);
         setValues(initial());
         setOpen(false);
+        onSuccess?.(res);
         router.refresh();
       } else {
         toast.error(res.error);
@@ -102,12 +108,12 @@ export function EntityFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         {mode === 'edit' ? (
-          <Button variant='ghost' size='icon' className='h-7 w-7' title='Chỉnh sửa'>
+          <Button variant='ghost' size='icon' className='h-7 w-7' title='Chinh sua'>
             <Icons.edit className='h-3.5 w-3.5' />
           </Button>
         ) : (
           <Button variant={triggerVariant} className='text-xs md:text-sm'>
-            <Icons.add className='mr-2 h-4 w-4' /> {triggerLabel ?? 'Thêm mới'}
+            <Icons.add className='mr-2 h-4 w-4' /> {triggerLabel ?? 'Them moi'}
           </Button>
         )}
       </DialogTrigger>
@@ -136,12 +142,12 @@ export function EntityFormDialog({
                   options={f.options ?? []}
                   value={values[f.name] ?? ''}
                   onChange={(v) => set(f.name, v)}
-                  placeholder={f.placeholder ?? 'Chọn'}
+                  placeholder={f.placeholder ?? 'Chon'}
                 />
               ) : f.type === 'select' ? (
                 <Select value={values[f.name] ?? ''} onValueChange={(v) => set(f.name, v)}>
                   <SelectTrigger>
-                    <SelectValue placeholder={f.placeholder ?? 'Chọn'} />
+                    <SelectValue placeholder={f.placeholder ?? 'Chon'} />
                   </SelectTrigger>
                   <SelectContent>
                     {(f.options ?? []).map((o) => (
@@ -166,7 +172,7 @@ export function EntityFormDialog({
                 <DatePickerVN
                   value={values[f.name] ?? ''}
                   onChange={(v) => set(f.name, v)}
-                  placeholder={f.placeholder ?? 'Chọn ngày'}
+                  placeholder={f.placeholder ?? 'Chon ngay'}
                 />
               ) : (
                 <Input
@@ -182,10 +188,10 @@ export function EntityFormDialog({
 
         <DialogFooter>
           <Button variant='outline' onClick={() => setOpen(false)} disabled={pending}>
-            Huỷ
+            Huy
           </Button>
           <Button onClick={onSubmit} disabled={pending}>
-            {pending ? 'Đang lưu...' : 'Lưu'}
+            {pending ? 'Dang luu...' : 'Luu'}
           </Button>
         </DialogFooter>
       </DialogContent>

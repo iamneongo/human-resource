@@ -13,6 +13,7 @@ import {
   updateContract
 } from '@/features/hr/contracts/actions';
 import { ContractFileCell } from '@/features/hr/contracts/contract-file-cell';
+import { CreateContractFlowDialog } from '@/features/hr/contracts/create-contract-flow-dialog';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
 import { formatVND } from '@/lib/format';
 
@@ -32,6 +33,7 @@ type Row = Awaited<ReturnType<typeof listContracts>>[number];
 
 export default async function ContractsPage() {
   const role = await getCurrentRole();
+
   if (!roleAtLeast(role, 'manager')) {
     return (
       <PageContainer pageTitle='Hợp đồng lao động' access={false}>
@@ -39,32 +41,30 @@ export default async function ContractsPage() {
       </PageContainer>
     );
   }
+
   const rows = await listContracts();
   const canCreate = roleAtLeast(role, 'hr');
-  const empOpts = canCreate ? await employeeOptions() : [];
+  const employeeSelectOptions = canCreate ? await employeeOptions() : [];
 
   const columns: Column<Row>[] = [
-    { header: 'Số HĐ', cell: (r) => r.contractNumber, className: 'font-medium' },
+    { header: 'Số HĐ', cell: (row) => row.contractNumber, className: 'font-medium' },
     {
       header: 'Nhân viên',
-      cell: (r) => `${r.employeeCode ?? ''} ${r.employeeName ?? ''}`
+      cell: (row) => `${row.employeeCode ?? ''} ${row.employeeName ?? ''}`.trim()
     },
-    { header: 'Loại', cell: (r) => TYPE_LABEL[r.type] ?? r.type },
-    { header: 'Bắt đầu', cell: (r) => r.startDate },
-    { header: 'Kết thúc', cell: (r) => renderExpiry(r.endDate) },
-    {
-      header: 'Lương cơ bản',
-      cell: (r) => formatVND(r.baseSalary)
-    },
+    { header: 'Loại', cell: (row) => TYPE_LABEL[row.type] ?? row.type },
+    { header: 'Bắt đầu', cell: (row) => row.startDate },
+    { header: 'Kết thúc', cell: (row) => renderExpiry(row.endDate) },
+    { header: 'Lương cơ bản', cell: (row) => formatVND(row.baseSalary) },
     {
       header: 'Tài liệu',
-      cell: (r) => (
+      cell: (row) => (
         <ContractFileCell
-          contractId={r.id}
-          contractNumber={r.contractNumber}
-          fileUrl={r.fileUrl ?? null}
-          fileName={r.fileName ?? null}
-          fileMimeType={r.fileMimeType ?? null}
+          contractId={row.id}
+          contractNumber={row.contractNumber}
+          fileUrl={row.fileUrl ?? null}
+          fileName={row.fileName ?? null}
+          fileMimeType={row.fileMimeType ?? null}
           canUpload={canCreate}
         />
       )
@@ -73,19 +73,19 @@ export default async function ContractsPage() {
       ? [
           {
             header: '',
-            cell: (r: Row) => (
+            cell: (row: Row) => (
               <div className='flex justify-end gap-1'>
                 <EntityFormDialog
                   mode='edit'
-                  title={`Sửa HĐ: ${r.contractNumber}`}
-                  action={updateContract.bind(null, r.id)}
+                  title={`Sửa HĐ: ${row.contractNumber}`}
+                  action={updateContract.bind(null, row.id)}
                   defaults={{
-                    contractNumber: r.contractNumber,
-                    type: r.type,
-                    startDate: r.startDate,
-                    endDate: r.endDate ?? '',
-                    baseSalary: r.baseSalary,
-                    status: r.status
+                    contractNumber: row.contractNumber,
+                    type: row.type,
+                    startDate: row.startDate,
+                    endDate: row.endDate ?? '',
+                    baseSalary: row.baseSalary,
+                    status: row.status
                   }}
                   fields={[
                     { name: 'contractNumber', label: 'Số hợp đồng', required: true },
@@ -125,8 +125,8 @@ export default async function ContractsPage() {
                   ]}
                 />
                 <ConfirmDeleteDialog
-                  label={`HĐ ${r.contractNumber}`}
-                  action={deleteContract.bind(null, r.id)}
+                  label={`HĐ ${row.contractNumber}`}
+                  action={deleteContract.bind(null, row.id)}
                 />
               </div>
             )
@@ -138,9 +138,10 @@ export default async function ContractsPage() {
   return (
     <PageContainer
       pageTitle='Hợp đồng lao động'
+      pageDescription='Lưu hợp đồng trước, rồi hệ thống sẽ mở ngay bước đính kèm tài liệu để bạn không bị lạc flow.'
       pageHeaderAction={
         canCreate ? (
-          <EntityFormDialog
+          <CreateContractFlowDialog
             triggerLabel='Thêm hợp đồng'
             title='Thêm hợp đồng lao động'
             action={createContract}
@@ -149,7 +150,7 @@ export default async function ContractsPage() {
                 name: 'employeeId',
                 label: 'Nhân viên',
                 type: 'select',
-                options: empOpts,
+                options: employeeSelectOptions,
                 required: true,
                 colSpan: 2
               },
@@ -189,8 +190,11 @@ export default async function ContractsPage() {
 
 function renderExpiry(endDate: string | null) {
   if (!endDate) return <span className='text-muted-foreground'>Vô thời hạn</span>;
+
   const days = differenceInCalendarDays(parseISO(endDate), new Date());
+
   if (days < 0) return <Badge variant='destructive'>Hết hạn ({endDate})</Badge>;
+
   if (days <= 30) {
     return (
       <Badge variant='secondary'>
@@ -198,5 +202,6 @@ function renderExpiry(endDate: string | null) {
       </Badge>
     );
   }
+
   return <span>{endDate}</span>;
 }
