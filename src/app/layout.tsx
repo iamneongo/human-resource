@@ -15,9 +15,45 @@ const META_THEME_COLORS = {
   dark: '#09090b'
 };
 
+const appName = 'Nhân sự HRM';
+const appDescription =
+  'Hệ thống quản lý nguồn nhân lực dành cho vận hành nhân sự, chấm công và tiền lương.';
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
 export const metadata: Metadata = {
-  title: 'Next Shadcn',
-  description: 'Basic dashboard with Next.js and Shadcn'
+  metadataBase: new URL(appUrl),
+  title: {
+    default: appName,
+    template: `%s | ${appName}`
+  },
+  description: appDescription,
+  applicationName: appName,
+  icons: {
+    icon: [{ url: '/icon.png', type: 'image/png' }],
+    apple: [{ url: '/apple-icon.png', type: 'image/png' }],
+    shortcut: ['/icon.png']
+  },
+  openGraph: {
+    title: appName,
+    description: appDescription,
+    siteName: appName,
+    type: 'website',
+    url: '/',
+    images: [
+      {
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: `${appName} Open Graph preview`
+      }
+    ]
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: appName,
+    description: appDescription,
+    images: ['/twitter-image']
+  }
 };
 
 export const viewport: Viewport = {
@@ -27,17 +63,16 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
   const activeThemeValue = cookieStore.get('active_theme')?.value;
-  const isValidTheme = THEMES.some((t) => t.value === activeThemeValue);
+  const isValidTheme = THEMES.some((theme) => theme.value === activeThemeValue);
   const themeToApply = isValidTheme ? activeThemeValue! : DEFAULT_THEME;
 
   return (
-    <html lang='en' suppressHydrationWarning data-theme={themeToApply}>
+    <html lang='vi' suppressHydrationWarning data-theme={themeToApply}>
       <head>
         <script
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                // Set meta theme color
                 if (localStorage.theme === 'dark' || ((!('theme' in localStorage) || localStorage.theme === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '${META_THEME_COLORS.dark}')
                 }
