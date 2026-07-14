@@ -14,14 +14,14 @@ export function RunActions({ id, status }: { id: string; status: string }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
-  function run(fn: (id: string) => Promise<Result>, okMsg: string) {
+  function run(fn: (id: string) => Promise<Result>, successMessage: string) {
     startTransition(async () => {
-      const res = await fn(id);
-      if (res.ok) {
-        toast.success(okMsg);
+      const result = await fn(id);
+      if (result.ok) {
+        toast.success(successMessage);
         router.refresh();
       } else {
-        toast.error(res.error);
+        toast.error(result.error);
       }
     });
   }
@@ -33,13 +33,14 @@ export function RunActions({ id, status }: { id: string; status: string }) {
           size='sm'
           variant='outline'
           disabled={pending}
-          onClick={() => run(previewPayrollRun, 'Đã preview bảng lương')}
+          onClick={() => run(previewPayrollRun, 'Đã tạo preview bảng lương')}
         >
-          {pending ? '...' : 'Preview'}
+          {pending ? '...' : 'Preview bảng lương'}
         </Button>
       </div>
     );
   }
+
   if (status === 'previewed') {
     return (
       <div className='flex justify-end gap-2'>
@@ -56,11 +57,12 @@ export function RunActions({ id, status }: { id: string; status: string }) {
           disabled={pending}
           onClick={() => run(computeAndLockRun, 'Đã chốt bảng lương')}
         >
-          {pending ? '...' : 'Chốt'}
+          {pending ? '...' : 'Chốt bảng lương'}
         </Button>
       </div>
     );
   }
+
   if (status === 'locked') {
     return (
       <Button
@@ -68,9 +70,10 @@ export function RunActions({ id, status }: { id: string; status: string }) {
         disabled={pending}
         onClick={() => run(approvePayrollRun, 'Đã duyệt bảng lương')}
       >
-        {pending ? '...' : 'Duyệt'}
+        {pending ? '...' : 'Duyệt bảng lương'}
       </Button>
     );
   }
+
   return null;
 }

@@ -25,7 +25,7 @@ const TYPE_LABEL: Record<string, string> = {
   term_1y: 'HĐLĐ 1 năm',
   term_3y: 'HĐLĐ 3 năm',
   indefinite: 'Không xác định thời hạn',
-  until_retirement: 'Đến nghỉ hưu',
+  until_retirement: 'Đến tuổi nghỉ hưu',
   seasonal: 'Thời vụ'
 };
 
@@ -36,7 +36,15 @@ export default async function ContractsPage() {
 
   if (!roleAtLeast(role, 'manager')) {
     return (
-      <PageContainer pageTitle='Hợp đồng lao động' access={false}>
+      <PageContainer
+        pageTitle='Hợp đồng lao động'
+        access={false}
+        accessFallback={
+          <div className='text-muted-foreground text-center text-lg'>
+            Bạn không có quyền xem danh sách hợp đồng lao động.
+          </div>
+        }
+      >
         <div />
       </PageContainer>
     );
@@ -47,12 +55,12 @@ export default async function ContractsPage() {
   const employeeSelectOptions = canCreate ? await employeeOptions() : [];
 
   const columns: Column<Row>[] = [
-    { header: 'Số HĐ', cell: (row) => row.contractNumber, className: 'font-medium' },
+    { header: 'Số hợp đồng', cell: (row) => row.contractNumber, className: 'font-medium' },
     {
       header: 'Nhân viên',
       cell: (row) => `${row.employeeCode ?? ''} ${row.employeeName ?? ''}`.trim()
     },
-    { header: 'Loại', cell: (row) => TYPE_LABEL[row.type] ?? row.type },
+    { header: 'Loại hợp đồng', cell: (row) => TYPE_LABEL[row.type] ?? row.type },
     { header: 'Bắt đầu', cell: (row) => row.startDate },
     { header: 'Kết thúc', cell: (row) => renderExpiry(row.endDate) },
     { header: 'Lương cơ bản', cell: (row) => formatVND(row.baseSalary) },
@@ -77,7 +85,7 @@ export default async function ContractsPage() {
               <div className='flex justify-end gap-1'>
                 <EntityFormDialog
                   mode='edit'
-                  title={`Sửa HĐ: ${row.contractNumber}`}
+                  title={`Sửa hợp đồng: ${row.contractNumber}`}
                   action={updateContract.bind(null, row.id)}
                   defaults={{
                     contractNumber: row.contractNumber,
@@ -91,7 +99,7 @@ export default async function ContractsPage() {
                     { name: 'contractNumber', label: 'Số hợp đồng', required: true },
                     {
                       name: 'type',
-                      label: 'Loại',
+                      label: 'Loại hợp đồng',
                       type: 'select' as const,
                       required: true,
                       options: Object.entries(TYPE_LABEL).map(([value, label]) => ({
@@ -123,9 +131,10 @@ export default async function ContractsPage() {
                       ]
                     }
                   ]}
+                  successMessage='Đã cập nhật hợp đồng'
                 />
                 <ConfirmDeleteDialog
-                  label={`HĐ ${row.contractNumber}`}
+                  label={`hợp đồng ${row.contractNumber}`}
                   action={deleteContract.bind(null, row.id)}
                 />
               </div>
@@ -138,7 +147,7 @@ export default async function ContractsPage() {
   return (
     <PageContainer
       pageTitle='Hợp đồng lao động'
-      pageDescription='Lưu hợp đồng trước, rồi hệ thống sẽ mở ngay bước đính kèm tài liệu để bạn không bị lạc flow.'
+      pageDescription='Lưu thông tin hợp đồng trước, sau đó tiếp tục đính kèm file để hoàn tất hồ sơ pháp lý. Cách này giúp người dùng không bị lạc flow khi nhập mới.'
       pageHeaderAction={
         canCreate ? (
           <CreateContractFlowDialog
@@ -160,17 +169,9 @@ export default async function ContractsPage() {
                 label: 'Loại hợp đồng',
                 type: 'select',
                 required: true,
-                options: Object.entries(TYPE_LABEL).map(([value, label]) => ({
-                  value,
-                  label
-                }))
+                options: Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))
               },
-              {
-                name: 'startDate',
-                label: 'Ngày bắt đầu',
-                type: 'date',
-                required: true
-              },
+              { name: 'startDate', label: 'Ngày bắt đầu', type: 'date', required: true },
               { name: 'endDate', label: 'Ngày kết thúc', type: 'date' },
               {
                 name: 'baseSalary',
@@ -183,13 +184,17 @@ export default async function ContractsPage() {
         ) : undefined
       }
     >
-      <SimpleTable columns={columns} rows={rows} emptyText='Chưa có hợp đồng nào.' />
+      <SimpleTable
+        columns={columns}
+        rows={rows}
+        emptyText='Chưa có hợp đồng nào. Hãy thêm hợp đồng đầu tiên để bắt đầu quản lý hồ sơ lao động.'
+      />
     </PageContainer>
   );
 }
 
 function renderExpiry(endDate: string | null) {
-  if (!endDate) return <span className='text-muted-foreground'>Vô thời hạn</span>;
+  if (!endDate) return <span className='text-muted-foreground'>Không thời hạn</span>;
 
   const days = differenceInCalendarDays(parseISO(endDate), new Date());
 

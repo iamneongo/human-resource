@@ -31,7 +31,7 @@ function getBreakdown(value: unknown): PayslipBreakdown {
 
 export async function listPayslips(runId?: string) {
   await requireRole('hr');
-  const q = db
+  const query = db
     .select({
       id: payslips.id,
       period: payrollRuns.period,
@@ -56,7 +56,7 @@ export async function listPayslips(runId?: string) {
     .orderBy(desc(payrollRuns.period))
     .limit(500);
 
-  const rows = runId ? await q.where(eq(payslips.payrollRunId, runId)) : await q;
+  const rows = runId ? await query.where(eq(payslips.payrollRunId, runId)) : await query;
   return rows.map((row) => {
     const breakdown = getBreakdown(row.breakdown);
     return {
@@ -81,7 +81,7 @@ export async function sendPayslip(id: string): Promise<Result> {
   try {
     await requireRole('hr');
   } catch {
-    return { ok: false, error: 'Không có quyền.' };
+    return { ok: false, error: 'Bạn không có quyền phát hành phiếu lương.' };
   }
 
   const [row] = await db

@@ -16,7 +16,15 @@ export default async function PayslipsPage() {
   const role = await getCurrentRole();
   if (!roleAtLeast(role, 'hr')) {
     return (
-      <PageContainer pageTitle='Phiếu lương' access={false}>
+      <PageContainer
+        pageTitle='Phiếu lương'
+        access={false}
+        accessFallback={
+          <div className='text-muted-foreground text-center text-lg'>
+            Bạn cần quyền HR trở lên để xem phiếu lương.
+          </div>
+        }
+      >
         <div />
       </PageContainer>
     );
@@ -24,43 +32,52 @@ export default async function PayslipsPage() {
 
   const rows = await listPayslips();
   const columns: Column<Row>[] = [
-    { header: 'Kỳ', cell: (r) => r.period ?? '—', className: 'font-medium' },
-    { header: 'Nhân viên', cell: (r) => `${r.employeeCode ?? ''} ${r.employeeName ?? ''}` },
+    { header: 'Kỳ lương', cell: (row) => row.period ?? '—', className: 'font-medium' },
+    {
+      header: 'Nhân viên',
+      cell: (row) => `${row.employeeCode ?? ''} ${row.employeeName ?? ''}`.trim()
+    },
     {
       header: 'Loại snapshot',
-      cell: (r) => (
-        <Badge variant={r.isPreview ? 'outline' : 'default'}>
-          {r.isPreview ? 'Preview' : 'Chính thức'}
+      cell: (row) => (
+        <Badge variant={row.isPreview ? 'outline' : 'default'}>
+          {row.isPreview ? 'Preview' : 'Chính thức'}
         </Badge>
       )
     },
     {
-      header: 'Nguồn công',
-      cell: (r) => `${num(r.manualDays)} manual / ${num(r.timesheetDays)} timesheet`
+      header: 'Nguồn dữ liệu công',
+      cell: (row) => `${num(row.manualDays)} manual / ${num(row.timesheetDays)} timesheet`
     },
-    { header: 'Công', cell: (r) => (r.workedDays ? `${num(r.workedDays)} công` : '—') },
-    { header: 'Lương ngày', cell: (r) => vnd(r.salaryPerDay) },
-    { header: 'Lương theo công', cell: (r) => vnd(r.salaryByAttendance) },
-    { header: 'OT', cell: (r) => (r.overtimeHours ? `${num(r.overtimeHours)} giờ` : '—') },
-    { header: 'Tiền OT', cell: (r) => vnd(r.overtimePay) },
-    { header: 'Phụ cấp', cell: (r) => vnd(r.fixedAllowance) },
-    { header: 'Điều chỉnh', cell: (r) => vnd(r.otherAdjustments) },
-    { header: 'Gross', cell: (r) => vnd(r.grossPay) },
-    { header: 'BHXH', cell: (r) => vnd(r.insuranceDeduction) },
-    { header: 'Thuế TNCN', cell: (r) => vnd(r.taxDeduction) },
-    { header: 'Thực nhận', cell: (r) => <span className='font-semibold'>{vnd(r.netPay)}</span> },
-    { header: '', cell: (r) => <SendButton id={r.id} sent={!!r.sentAt} isPreview={r.isPreview} /> }
+    { header: 'Số công', cell: (row) => (row.workedDays ? `${num(row.workedDays)} công` : '—') },
+    { header: 'Lương ngày', cell: (row) => vnd(row.salaryPerDay) },
+    { header: 'Lương theo công', cell: (row) => vnd(row.salaryByAttendance) },
+    { header: 'OT', cell: (row) => (row.overtimeHours ? `${num(row.overtimeHours)} giờ` : '—') },
+    { header: 'Tiền OT', cell: (row) => vnd(row.overtimePay) },
+    { header: 'Phụ cấp', cell: (row) => vnd(row.fixedAllowance) },
+    { header: 'Điều chỉnh', cell: (row) => vnd(row.otherAdjustments) },
+    { header: 'Gross', cell: (row) => vnd(row.grossPay) },
+    { header: 'BHXH', cell: (row) => vnd(row.insuranceDeduction) },
+    { header: 'Thuế TNCN', cell: (row) => vnd(row.taxDeduction) },
+    {
+      header: 'Thực nhận',
+      cell: (row) => <span className='font-semibold'>{vnd(row.netPay)}</span>
+    },
+    {
+      header: '',
+      cell: (row) => <SendButton id={row.id} sent={!!row.sentAt} isPreview={row.isPreview} />
+    }
   ];
 
   return (
     <PageContainer
       pageTitle='Phiếu lương'
-      pageDescription='Hiển thị cả preview và phiếu lương đã chốt để HR rà soát sai lệch trước khi phát hành nội bộ.'
+      pageDescription='Hiển thị cả bản preview và bản chính thức để HR đối chiếu sai lệch trước khi phát hành nội bộ.'
     >
       <SimpleTable
         columns={columns}
         rows={rows}
-        emptyText='Chưa có phiếu lương. Hãy tạo và preview/chốt một kỳ lương.'
+        emptyText='Chưa có phiếu lương. Hãy tạo kỳ lương rồi preview hoặc chốt bảng lương trước.'
       />
     </PageContainer>
   );

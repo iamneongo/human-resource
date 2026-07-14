@@ -15,8 +15,8 @@ const STATUS_META: Record<
 > = {
   active: { label: 'Đang làm việc', variant: 'default' },
   probation: { label: 'Thử việc', variant: 'secondary' },
-  on_leave: { label: 'Nghỉ phép', variant: 'outline' },
-  terminated: { label: 'Đã nghỉ', variant: 'destructive' }
+  on_leave: { label: 'Đang nghỉ phép', variant: 'outline' },
+  terminated: { label: 'Đã nghỉ việc', variant: 'destructive' }
 };
 
 type Row = Awaited<ReturnType<typeof listEmployees>>[number];
@@ -50,26 +50,26 @@ export default async function EmployeesPage() {
 
   const columns: Column<Row>[] = [
     {
-      header: 'Mã NV',
-      cell: (r) => (
+      header: 'Mã nhân viên',
+      cell: (row) => (
         <Link
-          href={`/dashboard/hr/employees/${r.id}`}
+          href={`/dashboard/hr/employees/${row.id}`}
           className='text-primary font-medium underline-offset-2 hover:underline'
         >
-          {r.employeeCode}
+          {row.employeeCode}
         </Link>
       )
     },
-    { header: 'Họ tên', cell: (r) => r.fullName },
-    { header: 'Phòng ban', cell: (r) => r.departmentName ?? '—' },
-    { header: 'Chức vụ', cell: (r) => r.positionTitle ?? '—' },
-    { header: 'Email', cell: (r) => r.email ?? '—' },
-    { header: 'Ngày vào làm', cell: (r) => r.hireDate ?? '—' },
+    { header: 'Họ tên', cell: (row) => row.fullName },
+    { header: 'Phòng ban', cell: (row) => row.departmentName ?? '—' },
+    { header: 'Chức vụ', cell: (row) => row.positionTitle ?? '—' },
+    { header: 'Email', cell: (row) => row.email ?? '—' },
+    { header: 'Ngày vào làm', cell: (row) => row.hireDate ?? '—' },
     {
       header: 'Trạng thái',
-      cell: (r) => {
-        const m = STATUS_META[r.status] ?? { label: r.status, variant: 'outline' as const };
-        return <Badge variant={m.variant}>{m.label}</Badge>;
+      cell: (row) => {
+        const meta = STATUS_META[row.status] ?? { label: row.status, variant: 'outline' as const };
+        return <Badge variant={meta.variant}>{meta.label}</Badge>;
       }
     }
   ];
@@ -77,6 +77,7 @@ export default async function EmployeesPage() {
   return (
     <PageContainer
       pageTitle='Hồ sơ nhân viên'
+      pageDescription='Danh sách nhân sự đang được quản lý trong hệ thống. Mỗi hồ sơ là điểm vào để xem hợp đồng, lương, tài sản và lịch sử điều chuyển.'
       pageHeaderAction={
         canCreate ? (
           <Link
@@ -88,7 +89,11 @@ export default async function EmployeesPage() {
         ) : undefined
       }
     >
-      <SimpleTable columns={columns} rows={rows} emptyText='Chưa có nhân viên nào.' />
+      <SimpleTable
+        columns={columns}
+        rows={rows}
+        emptyText='Chưa có nhân viên nào. Hãy thêm hồ sơ nhân viên đầu tiên để bắt đầu quản lý dữ liệu HR.'
+      />
     </PageContainer>
   );
 }

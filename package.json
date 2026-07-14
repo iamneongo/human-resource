@@ -20,6 +20,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "bun run src/db/seed.ts",
+    "db:seed:active": "bun run src/db/seeds/active-hr-modules.ts",
     "db:seed:aquaculture": "bun run src/db/seeds/aquaculture.ts",
     "prepare": "husky"
   },

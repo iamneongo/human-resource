@@ -4,38 +4,52 @@ import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
 import { PayrollChart } from '@/features/hr/payroll/payroll-chart';
 import { payrollReport } from '@/features/hr/payroll/payslips';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
-import { formatVND } from '@/lib/format';
+import { formatNumber, formatVND } from '@/lib/format';
 
 export const metadata = { title: 'HRM: Báo cáo lương' };
 
 const vnd = formatVND;
+const num = formatNumber;
 type Row = Awaited<ReturnType<typeof payrollReport>>[number];
 
 export default async function PayrollReportsPage() {
   const role = await getCurrentRole();
   if (!roleAtLeast(role, 'hr')) {
     return (
-      <PageContainer pageTitle='Báo cáo lương' access={false}>
+      <PageContainer
+        pageTitle='Báo cáo lương'
+        access={false}
+        accessFallback={
+          <div className='text-muted-foreground text-center text-lg'>
+            Bạn cần quyền HR trở lên để xem báo cáo lương.
+          </div>
+        }
+      >
         <div />
       </PageContainer>
     );
   }
-  const rows = await payrollReport();
 
+  const rows = await payrollReport();
   const columns: Column<Row>[] = [
-    { header: 'Kỳ', cell: (r) => r.period, className: 'font-medium' },
-    { header: 'Số phiếu', cell: (r) => r.count },
-    { header: 'Tổng quỹ lương (gross)', cell: (r) => vnd(r.gross) },
-    { header: 'Tổng BHXH', cell: (r) => vnd(r.insurance) },
-    { header: 'Tổng thuế TNCN', cell: (r) => vnd(r.tax) },
+    { header: 'Kỳ lương', cell: (row) => row.period, className: 'font-medium' },
+    { header: 'Số phiếu lương', cell: (row) => num(row.count) },
+    { header: 'Tổng công', cell: (row) => `${num(row.workdays)} công` },
+    { header: 'Tổng OT', cell: (row) => `${num(row.overtimeHours)} giờ` },
+    { header: 'Tổng gross', cell: (row) => vnd(row.gross) },
+    { header: 'Tổng BHXH', cell: (row) => vnd(row.insurance) },
+    { header: 'Tổng thuế TNCN', cell: (row) => vnd(row.tax) },
     {
-      header: 'Tổng thực chi (net)',
-      cell: (r) => <span className='font-semibold'>{vnd(r.net)}</span>
+      header: 'Tổng thực chi',
+      cell: (row) => <span className='font-semibold'>{vnd(row.net)}</span>
     }
   ];
 
   return (
-    <PageContainer pageTitle='Báo cáo lương'>
+    <PageContainer
+      pageTitle='Báo cáo lương'
+      pageDescription='Tổng hợp số liệu đã chốt theo kỳ lương. Chi phí forecast theo ngày ở màn định biên chỉ dùng để theo dõi vận hành, không thay thế báo cáo payroll chính thức.'
+    >
       {rows.length > 0 ? (
         <Card className='mb-6'>
           <CardHeader>
@@ -46,7 +60,11 @@ export default async function PayrollReportsPage() {
           </CardContent>
         </Card>
       ) : null}
-      <SimpleTable columns={columns} rows={rows} emptyText='Chưa có dữ liệu lương.' />
+      <SimpleTable
+        columns={columns}
+        rows={rows}
+        emptyText='Chưa có dữ liệu lương đã chốt. Hãy preview và chốt ít nhất một kỳ lương.'
+      />
     </PageContainer>
   );
 }
