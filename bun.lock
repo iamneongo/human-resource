@@ -4,7 +4,7 @@
     "": {
       "name": "next-shadcn-dashboard-starter",
       "dependencies": {
-        "@clerk/localizations": "^4.13.3",
+        "@clerk/localizations": "4.12.0",
         "@clerk/nextjs": "^7.3.5",
         "@dagrejs/dagre": "^3.0.0",
         "@dnd-kit/core": "^6.3.1",
@@ -146,7 +146,7 @@
 
     "@clerk/backend": ["@clerk/backend@3.4.9", "", { "dependencies": { "@clerk/shared": "^4.12.0", "standardwebhooks": "^1.0.0", "tslib": "2.8.1" } }, "sha512-2sbnGrHga3t/IFAkyvWO6H9QG1bnj7KUA13hpRB9utOYGCRdCn6oLxtiSdH6uGUzjX/km1dtw0uwZIxYgHbuVA=="],
 
-    "@clerk/localizations": ["@clerk/localizations@4.13.3", "", { "dependencies": { "@clerk/shared": "^4.25.3" } }, "sha512-Doi+Uot/cRvLFFuswBoZivyUK5AS3/s2x6simRKJjhFbJrtBJ8y94ew/3E5hRaXu6DKG7ojDkdGOZZuF+lP9Kw=="],
+    "@clerk/localizations": ["@clerk/localizations@4.12.0", "", { "dependencies": { "@clerk/shared": "^4.23.0" } }, "sha512-uuSQeB/HLg4Fkd0lJPBuG3jaW1o/enzh2ZsKaPCiAqZG39x109RkjyU3AP2dreVwXoXL572PYGT0JqKW+6THCA=="],
 
     "@clerk/nextjs": ["@clerk/nextjs@7.3.5", "", { "dependencies": { "@clerk/backend": "^3.4.9", "@clerk/react": "^6.6.4", "@clerk/shared": "^4.12.0", "server-only": "0.0.1", "tslib": "2.8.1" }, "peerDependencies": { "next": "^15.2.8 || ^15.3.8 || ^15.4.10 || ^15.5.9 || ^15.6.0-0 || ^16.0.10 || ^16.1.0-0", "react": "^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0", "react-dom": "^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0" } }, "sha512-Q2VaWLqnZrvWrbyQdji34fIBBHdZtRHjhd+BmW8a70Gxk2MKGgd9S7CzDFUBC/Q9jBjgGeZAZkH47WEK0opZow=="],
 

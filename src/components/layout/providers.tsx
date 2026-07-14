@@ -12,11 +12,13 @@ export default function Providers({
   activeThemeValue: string;
   children: React.ReactNode;
 }) {
+  const clerkLocalization = viVN as React.ComponentProps<typeof ClerkProvider>['localization'];
+
   return (
     <>
       <ActiveThemeProvider initialTheme={activeThemeValue}>
         <ClerkProvider
-          localization={viVN}
+          localization={clerkLocalization}
           appearance={{
             variables: {
               colorPrimary: 'var(--primary)',
