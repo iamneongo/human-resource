@@ -11,6 +11,7 @@ export const metadata = { title: 'HRM: Chốt bảng lương' };
 
 const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline'> = {
   draft: 'outline',
+  previewed: 'secondary',
   locked: 'secondary',
   approved: 'default',
   paid: 'default'
@@ -41,6 +42,16 @@ export default async function PayrollRunsPage() {
       )
     },
     {
+      header: 'Preview lúc',
+      cell: (r) =>
+        r.status === 'previewed' ||
+        r.status === 'locked' ||
+        r.status === 'approved' ||
+        r.status === 'paid'
+          ? new Date(r.updatedAt).toLocaleString('vi-VN')
+          : '—'
+    },
+    {
       header: 'Chốt lúc',
       cell: (r) => (r.lockedAt ? new Date(r.lockedAt).toLocaleString('vi-VN') : '—')
     },
@@ -50,6 +61,7 @@ export default async function PayrollRunsPage() {
   return (
     <PageContainer
       pageTitle='Chốt bảng lương'
+      pageDescription='Luồng payroll mới: nháp -> preview -> chốt -> duyệt.'
       pageHeaderAction={
         <EntityFormDialog
           triggerLabel='Tạo kỳ lương'

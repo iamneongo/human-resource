@@ -1,17 +1,39 @@
 'use server';
 
+import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { desc, eq } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { contracts, employees } from '@/db/schema';
+import { contracts, employees, files } from '@/db/schema';
 import { requireRole } from '@/lib/rbac';
 
-type Result = { ok: true } | { ok: false; error: string };
+type Result<T = void> = { ok: true; data?: T } | { ok: false; error: string };
+
+const TYPES = [
+  'probation',
+  'fixed_term',
+  'term_1y',
+  'term_3y',
+  'indefinite',
+  'until_retirement',
+  'seasonal'
+] as const;
+
+function getContractFileUrl(contractId: string, fileId: string | null) {
+  return fileId ? `/api/contracts/${contractId}/file` : null;
+}
+
+function revalidateContractViews(employeeId?: string | null) {
+  revalidatePath('/dashboard/hr/contracts');
+  if (employeeId) {
+    revalidatePath(`/dashboard/hr/employees/${employeeId}`);
+  }
+}
 
 export async function listContracts() {
   await requireRole('manager');
-  return db
+  const rows = await db
     .select({
       id: contracts.id,
       contractNumber: contracts.contractNumber,
@@ -20,7 +42,11 @@ export async function listContracts() {
       endDate: contracts.endDate,
       baseSalary: contracts.baseSalary,
       status: contracts.status,
-      fileUrl: contracts.fileUrl,
+      fileId: contracts.fileId,
+      fileName: contracts.fileName,
+      fileMimeType: contracts.fileMimeType,
+      fileSize: contracts.fileSize,
+      employeeId: contracts.employeeId,
       employeeName: employees.fullName,
       employeeCode: employees.employeeCode
     })
@@ -28,20 +54,69 @@ export async function listContracts() {
     .leftJoin(employees, eq(contracts.employeeId, employees.id))
     .orderBy(desc(contracts.createdAt))
     .limit(200);
+
+  return rows.map((row) => ({
+    ...row,
+    fileUrl: getContractFileUrl(row.id, row.fileId)
+  }));
 }
 
-const TYPES = ['probation', 'fixed_term', 'indefinite', 'seasonal'] as const;
-
-export async function attachContractFile(contractId: string, fileUrl: string): Promise<Result> {
+export async function attachContractFile(
+  contractId: string,
+  fileId: string
+): Promise<Result<{ fileUrl: string }>> {
   try {
     await requireRole('hr');
   } catch {
     return { ok: false, error: 'Không có quyền.' };
   }
+
+  const { userId } = await auth();
+  if (!userId) return { ok: false, error: 'Bạn cần đăng nhập.' };
+
   try {
-    await db.update(contracts).set({ fileUrl }).where(eq(contracts.id, contractId));
-    revalidatePath('/dashboard/hr/contracts');
-    return { ok: true };
+    const [contractRow] = await db
+      .select({
+        id: contracts.id,
+        employeeId: contracts.employeeId
+      })
+      .from(contracts)
+      .where(eq(contracts.id, contractId))
+      .limit(1);
+
+    if (!contractRow) return { ok: false, error: 'Không tìm thấy hợp đồng.' };
+
+    const [fileRow] = await db
+      .select({
+        id: files.id,
+        filename: files.filename,
+        mimeType: files.mimeType,
+        size: files.size
+      })
+      .from(files)
+      .where(eq(files.id, fileId))
+      .limit(1);
+
+    if (!fileRow) return { ok: false, error: 'Không tìm thấy file đã upload.' };
+
+    await db
+      .update(contracts)
+      .set({
+        fileUrl: getContractFileUrl(contractId, fileId),
+        fileId: fileRow.id,
+        fileName: fileRow.filename,
+        fileMimeType: fileRow.mimeType,
+        fileSize: fileRow.size,
+        fileUploadedBy: userId,
+        fileUploadedAt: new Date()
+      })
+      .where(eq(contracts.id, contractId));
+
+    revalidateContractViews(contractRow.employeeId);
+    return {
+      ok: true,
+      data: { fileUrl: getContractFileUrl(contractId, fileId)! }
+    };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
   }
@@ -54,6 +129,13 @@ export async function updateContract(id: string, v: Record<string, string>): Pro
     return { ok: false, error: 'Không có quyền.' };
   }
   try {
+    const [existing] = await db
+      .select({ employeeId: contracts.employeeId })
+      .from(contracts)
+      .where(eq(contracts.id, id))
+      .limit(1);
+    if (!existing) return { ok: false, error: 'Không tìm thấy hợp đồng.' };
+
     await db
       .update(contracts)
       .set({
@@ -65,7 +147,7 @@ export async function updateContract(id: string, v: Record<string, string>): Pro
         status: (v.status as 'active' | 'expired' | 'terminated') || undefined
       })
       .where(eq(contracts.id, id));
-    revalidatePath('/dashboard/hr/contracts');
+    revalidateContractViews(existing.employeeId);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
@@ -79,9 +161,15 @@ export async function deleteContract(id: string): Promise<Result> {
     return { ok: false, error: 'Không có quyền.' };
   }
   try {
-    // Soft delete: đặt status = terminated
+    const [existing] = await db
+      .select({ employeeId: contracts.employeeId })
+      .from(contracts)
+      .where(eq(contracts.id, id))
+      .limit(1);
+    if (!existing) return { ok: false, error: 'Không tìm thấy hợp đồng.' };
+
     await db.update(contracts).set({ status: 'terminated' }).where(eq(contracts.id, id));
-    revalidatePath('/dashboard/hr/contracts');
+    revalidateContractViews(existing.employeeId);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
@@ -108,10 +196,9 @@ export async function createContract(v: Record<string, string>): Promise<Result>
       startDate: v.startDate,
       endDate: v.endDate || null,
       baseSalary: v.baseSalary,
-      status: 'active',
-      fileUrl: v.fileUrl || null
+      status: 'active'
     });
-    revalidatePath('/dashboard/hr/contracts');
+    revalidateContractViews(v.employeeId);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };

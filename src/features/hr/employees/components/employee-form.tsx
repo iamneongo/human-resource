@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
+import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DatePickerVN } from '@/components/ui/date-picker-vn';
@@ -17,14 +18,16 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 
+import type { ActionResult } from '../actions';
 import {
   employeeFormSchema,
   employeeStatusValues,
   genderValues,
+  maritalStatusValues,
   type EmployeeFormValues
 } from '../schema';
-import type { ActionResult } from '../actions';
 
 const STATUS_LABEL: Record<(typeof employeeStatusValues)[number], string> = {
   active: 'Đang làm việc',
@@ -36,6 +39,14 @@ const STATUS_LABEL: Record<(typeof employeeStatusValues)[number], string> = {
 const GENDER_LABEL: Record<(typeof genderValues)[number], string> = {
   male: 'Nam',
   female: 'Nữ',
+  other: 'Khác'
+};
+
+const MARITAL_LABEL: Record<(typeof maritalStatusValues)[number], string> = {
+  single: 'Độc thân',
+  married: 'Đã kết hôn',
+  divorced: 'Ly hôn',
+  widowed: 'Goá',
   other: 'Khác'
 };
 
@@ -71,8 +82,7 @@ export function EmployeeForm({
 }: {
   mode: 'create' | 'edit';
   defaults?: Partial<EmployeeFormValues>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  action: (values: EmployeeFormValues) => Promise<ActionResult<any>>;
+  action: (values: EmployeeFormValues) => Promise<ActionResult<unknown>>;
   cancelHref: string;
   departmentOptions?: Option[];
   positionOptions?: Option[];
@@ -88,10 +98,24 @@ export function EmployeeForm({
     soCccd: defaults?.soCccd ?? '',
     dateOfBirth: defaults?.dateOfBirth ?? '',
     gender: defaults?.gender,
+    address: defaults?.address ?? '',
+    maritalStatus: defaults?.maritalStatus,
     hireDate: defaults?.hireDate ?? '',
+    seniorityDate: defaults?.seniorityDate ?? '',
+    probationEndDate: defaults?.probationEndDate ?? '',
+    resignDate: defaults?.resignDate ?? '',
+    resignReason: defaults?.resignReason ?? '',
     status: defaults?.status ?? 'probation',
     departmentId: defaults?.departmentId ?? '',
-    positionId: defaults?.positionId ?? ''
+    positionId: defaults?.positionId ?? '',
+    birthPlace: defaults?.birthPlace ?? '',
+    cccdIssueDate: defaults?.cccdIssueDate ?? '',
+    cccdIssuePlace: defaults?.cccdIssuePlace ?? '',
+    nationality: defaults?.nationality ?? '',
+    permanentAddress: defaults?.permanentAddress ?? '',
+    educationLevel: defaults?.educationLevel ?? '',
+    major: defaults?.major ?? '',
+    jobTitle: defaults?.jobTitle ?? ''
   });
 
   function set<K extends keyof EmployeeFormValues>(key: K, value: EmployeeFormValues[K]) {
@@ -109,8 +133,8 @@ export function EmployeeForm({
       const res = await action(parsed.data);
       if (res.ok) {
         toast.success(mode === 'create' ? 'Đã tạo nhân viên mới' : 'Đã cập nhật nhân viên');
-        if (mode === 'create' && res.data && 'id' in res.data) {
-          router.push(`/dashboard/hr/employees/${res.data.id}`);
+        if (mode === 'create' && res.data && typeof res.data === 'object' && 'id' in res.data) {
+          router.push(`/dashboard/hr/employees/${String(res.data.id)}`);
         } else {
           router.push(cancelHref);
           router.refresh();
@@ -122,13 +146,13 @@ export function EmployeeForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className='space-y-6 max-w-3xl'>
+    <form onSubmit={handleSubmit} className='max-w-5xl space-y-6'>
       <Card>
         <CardHeader>
           <CardTitle className='text-base'>Thông tin cơ bản</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
             <Field label='Mã nhân viên' required>
               <Input
                 value={values.employeeCode}
@@ -181,6 +205,76 @@ export function EmployeeForm({
                 </SelectContent>
               </Select>
             </Field>
+            <Field label='Tình trạng hôn nhân'>
+              <Select
+                value={values.maritalStatus ?? ''}
+                onValueChange={(v) =>
+                  set('maritalStatus', v as EmployeeFormValues['maritalStatus'])
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder='Chọn tình trạng' />
+                </SelectTrigger>
+                <SelectContent>
+                  {maritalStatusValues.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {MARITAL_LABEL[status]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label='Quốc tịch'>
+              <Input
+                value={values.nationality ?? ''}
+                onChange={(e) => set('nationality', e.target.value)}
+              />
+            </Field>
+          </div>
+          <div className='mt-4 grid grid-cols-1 gap-4'>
+            <Field label='Địa chỉ liên hệ'>
+              <Textarea
+                value={values.address ?? ''}
+                onChange={(e) => set('address', e.target.value)}
+                rows={3}
+              />
+            </Field>
+            <Field label='Địa chỉ thường trú'>
+              <Textarea
+                value={values.permanentAddress ?? ''}
+                onChange={(e) => set('permanentAddress', e.target.value)}
+                rows={3}
+              />
+            </Field>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className='text-base'>Thông tin hành chính</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+            <Field label='Nơi sinh'>
+              <Input
+                value={values.birthPlace ?? ''}
+                onChange={(e) => set('birthPlace', e.target.value)}
+              />
+            </Field>
+            <Field label='Ngày cấp CCCD'>
+              <DatePickerVN
+                value={values.cccdIssueDate ?? ''}
+                onChange={(v) => set('cccdIssueDate', v)}
+                placeholder='Chọn ngày cấp'
+              />
+            </Field>
+            <Field label='Nơi cấp CCCD'>
+              <Input
+                value={values.cccdIssuePlace ?? ''}
+                onChange={(e) => set('cccdIssuePlace', e.target.value)}
+              />
+            </Field>
           </div>
         </CardContent>
       </Card>
@@ -190,12 +284,26 @@ export function EmployeeForm({
           <CardTitle className='text-base'>Thông tin công tác</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
             <Field label='Ngày vào làm'>
               <DatePickerVN
                 value={values.hireDate ?? ''}
                 onChange={(v) => set('hireDate', v)}
                 placeholder='Chọn ngày vào làm'
+              />
+            </Field>
+            <Field label='Ngày tính thâm niên'>
+              <DatePickerVN
+                value={values.seniorityDate ?? ''}
+                onChange={(v) => set('seniorityDate', v)}
+                placeholder='Chọn ngày thâm niên'
+              />
+            </Field>
+            <Field label='Hết thử việc'>
+              <DatePickerVN
+                value={values.probationEndDate ?? ''}
+                onChange={(v) => set('probationEndDate', v)}
+                placeholder='Chọn ngày hết thử việc'
               />
             </Field>
             <Field label='Trạng thái' required>
@@ -250,6 +358,47 @@ export function EmployeeForm({
                 </Select>
               </Field>
             )}
+            <Field label='Chức danh nội bộ'>
+              <Input
+                value={values.jobTitle ?? ''}
+                onChange={(e) => set('jobTitle', e.target.value)}
+              />
+            </Field>
+            <Field label='Ngày nghỉ việc'>
+              <DatePickerVN
+                value={values.resignDate ?? ''}
+                onChange={(v) => set('resignDate', v)}
+                placeholder='Chọn ngày nghỉ việc'
+              />
+            </Field>
+          </div>
+          <div className='mt-4'>
+            <Field label='Lý do nghỉ việc'>
+              <Textarea
+                value={values.resignReason ?? ''}
+                onChange={(e) => set('resignReason', e.target.value)}
+                rows={3}
+              />
+            </Field>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className='text-base'>Học vấn và chuyên môn</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+            <Field label='Trình độ học vấn'>
+              <Input
+                value={values.educationLevel ?? ''}
+                onChange={(e) => set('educationLevel', e.target.value)}
+              />
+            </Field>
+            <Field label='Chuyên ngành'>
+              <Input value={values.major ?? ''} onChange={(e) => set('major', e.target.value)} />
+            </Field>
           </div>
         </CardContent>
       </Card>
@@ -258,7 +407,16 @@ export function EmployeeForm({
 
       <div className='flex gap-3'>
         <Button type='submit' disabled={pending}>
-          {pending ? 'Đang lưu...' : mode === 'create' ? 'Tạo nhân viên' : 'Cập nhật'}
+          {pending ? (
+            <>
+              <Icons.spinner className='mr-2 h-4 w-4 animate-spin' />
+              Đang lưu...
+            </>
+          ) : mode === 'create' ? (
+            'Tạo nhân viên'
+          ) : (
+            'Cập nhật'
+          )}
         </Button>
         <Button
           type='button'

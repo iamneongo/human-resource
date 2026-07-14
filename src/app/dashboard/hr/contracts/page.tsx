@@ -2,6 +2,7 @@ import { differenceInCalendarDays, parseISO } from 'date-fns';
 
 import PageContainer from '@/components/layout/page-container';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmDeleteDialog } from '@/features/hr/common/confirm-delete-dialog';
 import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
 import { employeeOptions } from '@/features/hr/common/lookups';
 import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
@@ -11,7 +12,6 @@ import {
   listContracts,
   updateContract
 } from '@/features/hr/contracts/actions';
-import { ConfirmDeleteDialog } from '@/features/hr/common/confirm-delete-dialog';
 import { ContractFileCell } from '@/features/hr/contracts/contract-file-cell';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
 import { formatVND } from '@/lib/format';
@@ -21,7 +21,10 @@ export const metadata = { title: 'HRM: Hợp đồng lao động' };
 const TYPE_LABEL: Record<string, string> = {
   probation: 'Thử việc',
   fixed_term: 'Xác định thời hạn',
+  term_1y: 'HĐLĐ 1 năm',
+  term_3y: 'HĐLĐ 3 năm',
   indefinite: 'Không xác định thời hạn',
+  until_retirement: 'Đến nghỉ hưu',
   seasonal: 'Thời vụ'
 };
 
@@ -60,6 +63,8 @@ export default async function ContractsPage() {
           contractId={r.id}
           contractNumber={r.contractNumber}
           fileUrl={r.fileUrl ?? null}
+          fileName={r.fileName ?? null}
+          fileMimeType={r.fileMimeType ?? null}
           canUpload={canCreate}
         />
       )
@@ -186,11 +191,12 @@ function renderExpiry(endDate: string | null) {
   if (!endDate) return <span className='text-muted-foreground'>Vô thời hạn</span>;
   const days = differenceInCalendarDays(parseISO(endDate), new Date());
   if (days < 0) return <Badge variant='destructive'>Hết hạn ({endDate})</Badge>;
-  if (days <= 30)
+  if (days <= 30) {
     return (
       <Badge variant='secondary'>
         Sắp hết hạn: {endDate} ({days} ngày)
       </Badge>
     );
+  }
   return <span>{endDate}</span>;
 }

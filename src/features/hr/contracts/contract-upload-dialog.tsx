@@ -4,24 +4,32 @@ import * as React from 'react';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'sonner';
 
+import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
+
 import { attachContractFile } from './actions';
 
+const MAX_BYTES = 8 * 1024 * 1024;
 const ACCEPT = {
   'application/pdf': ['.pdf'],
   'application/msword': ['.doc'],
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
 };
 
+function formatSize(bytes: number) {
+  return bytes < 1024 * 1024
+    ? `${(bytes / 1024).toFixed(0)} KB`
+    : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 type Props = {
   open: boolean;
   onClose: () => void;
   contractId: string;
   contractNumber: string;
-  onUploaded: (url: string) => void;
+  onUploaded: (fileUrl: string) => void;
 };
 
 export function ContractUploadDialog({
@@ -37,7 +45,13 @@ export function ContractUploadDialog({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: ACCEPT,
     maxFiles: 1,
-    onDrop: (accepted) => setFile(accepted[0] ?? null)
+    maxSize: MAX_BYTES,
+    onDrop: (accepted, rejected) => {
+      if (rejected[0]?.errors?.length) {
+        toast.error('Chỉ nhận PDF/DOC/DOCX tối đa 8MB.');
+      }
+      setFile(accepted[0] ?? null);
+    }
   });
 
   const handleUpload = async () => {
@@ -48,17 +62,17 @@ export function ContractUploadDialog({
       form.append('file', file);
       const res = await fetch('/api/upload', { method: 'POST', body: form });
       const json = await res.json();
-      if (!res.ok || !json.url) {
+      if (!res.ok || !json.fileId) {
         toast.error(json.error ?? 'Upload thất bại.');
         return;
       }
-      const result = await attachContractFile(contractId, json.url);
-      if (!result.ok) {
-        toast.error(result.error);
+      const result = await attachContractFile(contractId, json.fileId);
+      if (!result.ok || !result.data?.fileUrl) {
+        toast.error(result.ok ? 'Không lấy được đường dẫn file.' : result.error);
         return;
       }
       toast.success('Đã đính kèm tài liệu hợp đồng.');
-      onUploaded(json.url);
+      onUploaded(result.data.fileUrl);
       onClose();
     } catch {
       toast.error('Lỗi kết nối.');
@@ -71,11 +85,6 @@ export function ContractUploadDialog({
     setFile(null);
     onClose();
   };
-
-  const formatSize = (bytes: number) =>
-    bytes < 1024 * 1024
-      ? `${(bytes / 1024).toFixed(0)} KB`
-      : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
@@ -90,7 +99,7 @@ export function ContractUploadDialog({
         <div
           {...getRootProps()}
           className={cn(
-            'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors',
+            'cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors',
             isDragActive
               ? 'border-primary bg-primary/5'
               : 'border-border hover:border-primary/50 hover:bg-muted/40'
@@ -121,7 +130,7 @@ export function ContractUploadDialog({
               <p className='text-sm font-medium'>
                 {isDragActive ? 'Thả file vào đây' : 'Kéo thả hoặc click để chọn file'}
               </p>
-              <p className='text-muted-foreground text-xs'>PDF, DOC, DOCX</p>
+              <p className='text-muted-foreground text-xs'>PDF, DOC, DOCX tối đa 8MB</p>
             </div>
           )}
         </div>

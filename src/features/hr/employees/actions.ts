@@ -18,7 +18,10 @@ import { requireRole } from '@/lib/rbac';
 
 import { employeeFormSchema, type EmployeeFormValues } from './schema';
 
-/** Chi tiết 1 nhân viên: hồ sơ + phòng ban/chức vụ + hợp đồng. */
+function getContractFileUrl(contractId: string, fileId: string | null) {
+  return fileId ? `/api/contracts/${contractId}/file` : null;
+}
+
 export async function getEmployeeDetail(id: string) {
   await requireRole('manager');
   const [emp] = await db
@@ -31,12 +34,16 @@ export async function getEmployeeDetail(id: string) {
       soCccd: employees.soCccd,
       phone: employees.phone,
       email: employees.email,
+      address: employees.address,
+      maritalStatus: employees.maritalStatus,
       status: employees.status,
       hireDate: employees.hireDate,
       seniorityDate: employees.seniorityDate,
       probationEndDate: employees.probationEndDate,
       resignDate: employees.resignDate,
       resignReason: employees.resignReason,
+      departmentId: employees.departmentId,
+      positionId: employees.positionId,
       departmentName: departments.name,
       positionTitle: positions.title,
       birthPlace: employeeProfiles.birthPlace,
@@ -63,18 +70,24 @@ export async function getEmployeeDetail(id: string) {
       contractNumber: contracts.contractNumber,
       startDate: contracts.startDate,
       endDate: contracts.endDate,
-      status: contracts.status
+      status: contracts.status,
+      fileId: contracts.fileId
     })
     .from(contracts)
     .where(eq(contracts.employeeId, id))
     .orderBy(desc(contracts.startDate));
 
-  return { emp, contracts: contractRows };
+  return {
+    emp,
+    contracts: contractRows.map((row) => ({
+      ...row,
+      fileUrl: getContractFileUrl(row.id, row.fileId)
+    }))
+  };
 }
 
 export type ActionResult<T = void> = { ok: true; data: T } | { ok: false; error: string };
 
-/** Danh sách nhân viên (kèm phòng ban / chức vụ) cho bảng. */
 export async function listEmployees(search?: string) {
   await requireRole('manager');
 
@@ -104,7 +117,6 @@ export async function listEmployees(search?: string) {
   return rows;
 }
 
-/** Cập nhật thông tin nhân viên. Chỉ HR trở lên. */
 export async function updateEmployee(
   id: string,
   v: Record<string, string>
@@ -137,10 +149,9 @@ export async function updateEmployee(
   }
 }
 
-/** Lấy danh sách hợp đồng của 1 nhân viên kèm thông tin expiry. */
 export async function getEmployeeContracts(employeeId: string) {
   await requireRole('manager');
-  return db
+  const rows = await db
     .select({
       id: contracts.id,
       type: contracts.type,
@@ -149,14 +160,20 @@ export async function getEmployeeContracts(employeeId: string) {
       endDate: contracts.endDate,
       baseSalary: contracts.baseSalary,
       status: contracts.status,
-      fileUrl: contracts.fileUrl
+      fileId: contracts.fileId,
+      fileName: contracts.fileName,
+      fileMimeType: contracts.fileMimeType
     })
     .from(contracts)
     .where(eq(contracts.employeeId, employeeId))
     .orderBy(desc(contracts.startDate));
+
+  return rows.map((row) => ({
+    ...row,
+    fileUrl: getContractFileUrl(row.id, row.fileId)
+  }));
 }
 
-/** Lịch sử thông tin lương của 1 nhân viên. */
 export async function getEmployeeSalaryHistory(employeeId: string) {
   await requireRole('manager');
   return db
@@ -166,7 +183,6 @@ export async function getEmployeeSalaryHistory(employeeId: string) {
     .orderBy(desc(salaryInfos.effectiveFrom));
 }
 
-/** Danh sách tài sản & BHLD của 1 nhân viên. */
 export async function getEmployeeAssets(employeeId: string) {
   await requireRole('manager');
   return db
@@ -176,7 +192,6 @@ export async function getEmployeeAssets(employeeId: string) {
     .orderBy(desc(assets.issueDate));
 }
 
-/** Khen thưởng / Kỷ luật của 1 nhân viên. */
 export async function getEmployeeRewards(employeeId: string) {
   await requireRole('manager');
   return db
@@ -186,7 +201,6 @@ export async function getEmployeeRewards(employeeId: string) {
     .orderBy(desc(rewardsDisciplines.decisionDate));
 }
 
-/** Nhân viên có hợp đồng sắp hết hạn trong X ngày tới. */
 export async function getEmployeesWithExpiringContracts(withinDays: number) {
   await requireRole('manager');
   const cutoff = new Date();
@@ -203,11 +217,10 @@ export async function getEmployeesWithExpiringContracts(withinDays: number) {
     })
     .from(contracts)
     .leftJoin(employees, eq(contracts.employeeId, employees.id))
-    .where(or(and(gte(contracts.endDate, todayStr), lte(contracts.endDate, cutoffStr))))
+    .where(and(gte(contracts.endDate, todayStr), lte(contracts.endDate, cutoffStr)))
     .orderBy(contracts.endDate);
 }
 
-/** Cập nhật hồ sơ chi tiết nhân viên (học vấn, chức danh, địa chỉ...) */
 export async function upsertEmployeeProfile(
   employeeId: string,
   v: Record<string, string>
@@ -251,7 +264,6 @@ export async function upsertEmployeeProfile(
   }
 }
 
-/** Cập nhật thông tin công tác + học vấn. */
 export async function updateEmployeeWorkInfo(
   id: string,
   v: Record<string, string>
@@ -273,12 +285,26 @@ export async function updateEmployeeWorkInfo(
         positionId: v.positionId || null
       })
       .where(eq(employees.id, id));
-    // Cập nhật thêm thông tin học vấn/chức danh nếu có
-    if (v.educationLevel || v.major || v.jobTitle) {
+
+    if (
+      v.educationLevel ||
+      v.major ||
+      v.jobTitle ||
+      v.birthPlace ||
+      v.cccdIssueDate ||
+      v.cccdIssuePlace ||
+      v.nationality ||
+      v.permanentAddress
+    ) {
       await db
         .insert(employeeProfiles)
         .values({
           employeeId: id,
+          birthPlace: v.birthPlace || null,
+          cccdIssueDate: v.cccdIssueDate || null,
+          cccdIssuePlace: v.cccdIssuePlace || null,
+          nationality: v.nationality || null,
+          permanentAddress: v.permanentAddress || null,
           educationLevel: v.educationLevel || null,
           major: v.major || null,
           jobTitle: v.jobTitle || null
@@ -286,6 +312,11 @@ export async function updateEmployeeWorkInfo(
         .onConflictDoUpdate({
           target: employeeProfiles.employeeId,
           set: {
+            birthPlace: v.birthPlace || null,
+            cccdIssueDate: v.cccdIssueDate || null,
+            cccdIssuePlace: v.cccdIssuePlace || null,
+            nationality: v.nationality || null,
+            permanentAddress: v.permanentAddress || null,
             educationLevel: v.educationLevel || null,
             major: v.major || null,
             jobTitle: v.jobTitle || null
@@ -299,7 +330,6 @@ export async function updateEmployeeWorkInfo(
   }
 }
 
-/** Cập nhật đầy đủ thông tin nhân viên từ form trang riêng. */
 export async function updateEmployeeFull(
   id: string,
   values: EmployeeFormValues
@@ -315,21 +345,57 @@ export async function updateEmployeeFull(
   }
   const v = parsed.data;
   try {
-    await db
-      .update(employees)
-      .set({
-        fullName: v.fullName,
-        email: v.email || null,
-        phone: v.phone || null,
-        soCccd: v.soCccd || null,
-        dateOfBirth: v.dateOfBirth || null,
-        gender: v.gender,
-        hireDate: v.hireDate || null,
-        status: v.status,
-        departmentId: v.departmentId || null,
-        positionId: v.positionId || null
-      })
-      .where(eq(employees.id, id));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(employees)
+        .set({
+          fullName: v.fullName,
+          email: v.email || null,
+          phone: v.phone || null,
+          soCccd: v.soCccd || null,
+          dateOfBirth: v.dateOfBirth || null,
+          gender: v.gender,
+          address: v.address || null,
+          maritalStatus: v.maritalStatus ?? null,
+          hireDate: v.hireDate || null,
+          seniorityDate: v.seniorityDate || null,
+          probationEndDate: v.probationEndDate || null,
+          resignDate: v.resignDate || null,
+          resignReason: v.resignReason || null,
+          status: v.status,
+          departmentId: v.departmentId || null,
+          positionId: v.positionId || null
+        })
+        .where(eq(employees.id, id));
+
+      await tx
+        .insert(employeeProfiles)
+        .values({
+          employeeId: id,
+          birthPlace: v.birthPlace || null,
+          cccdIssueDate: v.cccdIssueDate || null,
+          cccdIssuePlace: v.cccdIssuePlace || null,
+          nationality: v.nationality || null,
+          permanentAddress: v.permanentAddress || null,
+          educationLevel: v.educationLevel || null,
+          major: v.major || null,
+          jobTitle: v.jobTitle || null
+        })
+        .onConflictDoUpdate({
+          target: employeeProfiles.employeeId,
+          set: {
+            birthPlace: v.birthPlace || null,
+            cccdIssueDate: v.cccdIssueDate || null,
+            cccdIssuePlace: v.cccdIssuePlace || null,
+            nationality: v.nationality || null,
+            permanentAddress: v.permanentAddress || null,
+            educationLevel: v.educationLevel || null,
+            major: v.major || null,
+            jobTitle: v.jobTitle || null
+          }
+        });
+    });
+
     revalidatePath(`/dashboard/hr/employees/${id}`);
     revalidatePath('/dashboard/hr/employees');
     return { ok: true, data: undefined };
@@ -338,7 +404,6 @@ export async function updateEmployeeFull(
   }
 }
 
-/** Tạo nhân viên mới. Chỉ HR trở lên. */
 export async function createEmployee(
   values: EmployeeFormValues
 ): Promise<ActionResult<{ id: string }>> {
@@ -365,18 +430,35 @@ export async function createEmployee(
         soCccd: v.soCccd || null,
         dateOfBirth: v.dateOfBirth || null,
         gender: v.gender,
+        address: v.address || null,
+        maritalStatus: v.maritalStatus ?? null,
         hireDate: v.hireDate || null,
+        seniorityDate: v.seniorityDate || null,
+        probationEndDate: v.probationEndDate || null,
+        resignDate: v.resignDate || null,
+        resignReason: v.resignReason || null,
         status: v.status,
         departmentId: v.departmentId || null,
         positionId: v.positionId || null
       })
       .returning({ id: employees.id });
 
+    await db.insert(employeeProfiles).values({
+      employeeId: row.id,
+      birthPlace: v.birthPlace || null,
+      cccdIssueDate: v.cccdIssueDate || null,
+      cccdIssuePlace: v.cccdIssuePlace || null,
+      nationality: v.nationality || null,
+      permanentAddress: v.permanentAddress || null,
+      educationLevel: v.educationLevel || null,
+      major: v.major || null,
+      jobTitle: v.jobTitle || null
+    });
+
     revalidatePath('/dashboard/hr/employees');
     return { ok: true, data: { id: row.id } };
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Lỗi không xác định';
-    // Unique violation on employee_code
     if (msg.includes('employee_code')) {
       return { ok: false, error: 'Mã nhân viên đã tồn tại.' };
     }

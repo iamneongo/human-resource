@@ -16,6 +16,7 @@ import { id, timestamps } from './_shared';
 
 export const payrollRunStatusEnum = pgEnum('payroll_run_status', [
   'draft',
+  'previewed',
   'calculating',
   'locked',
   'approving',
@@ -121,13 +122,10 @@ export const payslips = pgTable('payslips', {
   employeeId: uuid('employee_id')
     .notNull()
     .references(() => employees.id),
+  isPreview: boolean('is_preview').notNull().default(false),
   baseSalary: numeric('base_salary', { precision: 18, scale: 2 }).notNull(),
-  allowances: numeric('allowances', { precision: 18, scale: 2 })
-    .notNull()
-    .default('0'),
-  overtimePay: numeric('overtime_pay', { precision: 18, scale: 2 })
-    .notNull()
-    .default('0'),
+  allowances: numeric('allowances', { precision: 18, scale: 2 }).notNull().default('0'),
+  overtimePay: numeric('overtime_pay', { precision: 18, scale: 2 }).notNull().default('0'),
   grossPay: numeric('gross_pay', { precision: 18, scale: 2 }).notNull(),
   insuranceDeduction: numeric('insurance_deduction', {
     precision: 18,
@@ -135,15 +133,11 @@ export const payslips = pgTable('payslips', {
   })
     .notNull()
     .default('0'),
-  taxDeduction: numeric('tax_deduction', { precision: 18, scale: 2 })
-    .notNull()
-    .default('0'),
-  otherDeduction: numeric('other_deduction', { precision: 18, scale: 2 })
-    .notNull()
-    .default('0'),
+  taxDeduction: numeric('tax_deduction', { precision: 18, scale: 2 }).notNull().default('0'),
+  otherDeduction: numeric('other_deduction', { precision: 18, scale: 2 }).notNull().default('0'),
   netPay: numeric('net_pay', { precision: 18, scale: 2 }).notNull(),
   // Chi tiết dòng lương để hiển thị/kiểm toán
-  breakdown: jsonb('breakdown').$type<Record<string, number>>(),
+  breakdown: jsonb('breakdown').$type<Record<string, number | string>>(),
   sentAt: timestamp('sent_at', { withTimezone: true }),
   ...timestamps
 });
