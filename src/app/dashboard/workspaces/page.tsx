@@ -1,12 +1,16 @@
 'use client';
 
 import PageContainer from '@/components/layout/page-container';
-import { OrganizationList } from '@clerk/nextjs';
 import { workspacesInfoContent } from '@/config/infoconfig';
+import { OrganizationList } from '@clerk/nextjs';
 
 export default function WorkspacesPage() {
   return (
-    <PageContainer pageTitle='Workspaces' infoContent={workspacesInfoContent}>
+    <PageContainer
+      pageTitle='Tổ chức'
+      pageDescription='Tạo tổ chức mới hoặc chọn tổ chức đang có để vào trang quản lý thành viên.'
+      infoContent={workspacesInfoContent}
+    >
       <OrganizationList
         appearance={{
           elements: {
