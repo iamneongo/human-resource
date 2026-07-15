@@ -17,6 +17,8 @@ import {
   YAxis
 } from 'recharts';
 
+import { Icons } from '@/components/icons';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   type ChartConfig,
@@ -29,84 +31,123 @@ import {
 
 import type { HrDashboardData } from './hr-dashboard';
 
-const PALETTE = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)'
-];
+const COOL_SCALE = ['#1d4ed8', '#2563eb', '#0891b2', '#0f766e', '#475569'];
 
-const vnd = (n: number) =>
+const COOL_MONO = ['#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa', '#2563eb'];
+
+const vndShort = (n: number) =>
   n >= 1_000_000
-    ? (n / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' tr₫'
-    : n.toLocaleString('vi-VN') + ' ₫';
+    ? `${(n / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr₫`
+    : `${n.toLocaleString('vi-VN')} ₫`;
+
+function chartBadge(label: string) {
+  return (
+    <Badge variant='outline' className='gap-1.5 border-border/60 bg-background/70 font-normal'>
+      <Icons.sparkles className='size-3.5 text-primary' />
+      {label}
+    </Badge>
+  );
+}
+
+function EmptyChart() {
+  return (
+    <div className='text-muted-foreground flex h-[220px] w-full items-center justify-center text-sm'>
+      Chưa có dữ liệu để hiển thị.
+    </div>
+  );
+}
+
+function CenterLabel({
+  value,
+  helper,
+  viewBox
+}: {
+  value: number;
+  helper: string;
+  viewBox?: { cx?: number; cy?: number };
+}) {
+  if (!viewBox || typeof viewBox.cx !== 'number') return null;
+  const { cx, cy = 0 } = viewBox;
+  return (
+    <text x={cx} y={cy} textAnchor='middle' dominantBaseline='middle'>
+      <tspan x={cx} y={cy - 2} className='fill-foreground text-2xl font-semibold'>
+        {value.toLocaleString('vi-VN')}
+      </tspan>
+      <tspan x={cx} y={cy + 18} className='fill-muted-foreground text-[11px]'>
+        {helper}
+      </tspan>
+    </text>
+  );
+}
 
 export function HrCharts({ data }: { data: HrDashboardData }) {
-  // Phòng ban (nhóm động) — tô màu xoay vòng theo bảng màu của theme
-  const deptData = data.byDept.map((d, i) => ({
-    ...d,
-    fill: PALETTE[i % PALETTE.length]
+  const deptData = data.byDept.map((item, index) => ({
+    ...item,
+    fill: COOL_MONO[index % COOL_MONO.length]
   }));
-  const deptTotal = deptData.reduce((s, d) => s + d.value, 0);
+  const deptTotal = deptData.reduce((sum, item) => sum + item.value, 0);
   const deptConfig: ChartConfig = { value: { label: 'Nhân sự' } };
 
-  // Trạng thái — màu điều khiển qua config (chuẩn shadcn: var(--color-<key>))
-  const statusConfig: ChartConfig = {
-    value: { label: 'Số lượng' },
-    active: { label: 'Đang làm việc', color: 'var(--chart-1)' },
-    probation: { label: 'Thử việc', color: 'var(--chart-2)' },
-    on_leave: { label: 'Nghỉ phép', color: 'var(--chart-3)' },
-    terminated: { label: 'Đã nghỉ', color: 'var(--chart-4)' }
-  };
-  const statusData = data.byStatus.map((s) => ({
-    ...s,
-    fill: `var(--color-${s.status})`
+  const statusData = data.byStatus.map((item, index) => ({
+    ...item,
+    fill: COOL_SCALE[index % COOL_SCALE.length]
   }));
+  const statusConfig: ChartConfig = Object.fromEntries(
+    statusData.map((item) => [
+      item.status,
+      {
+        label: item.label,
+        color: item.fill
+      }
+    ])
+  );
 
-  // Giới tính
-  const genderConfig: ChartConfig = {
-    value: { label: 'Nhân sự' },
-    male: { label: 'Nam', color: 'var(--chart-1)' },
-    female: { label: 'Nữ', color: 'var(--chart-4)' },
-    other: { label: 'Khác', color: 'var(--chart-3)' }
-  };
-  const genderData = data.byGender.map((g) => ({
-    ...g,
-    fill: `var(--color-${g.gender})`
+  const genderData = data.byGender.map((item, index) => ({
+    ...item,
+    fill: COOL_MONO[(index + 1) % COOL_MONO.length]
   }));
-  const genderTotal = genderData.reduce((s, g) => s + g.value, 0);
+  const genderTotal = genderData.reduce((sum, item) => sum + item.value, 0);
+  const genderConfig: ChartConfig = Object.fromEntries(
+    genderData.map((item) => [
+      item.gender,
+      {
+        label: item.label,
+        color: item.fill
+      }
+    ])
+  );
 
-  // Loại hợp đồng
+  const contractData = data.byContractType.map((item, index) => ({
+    ...item,
+    fill: COOL_SCALE[index % COOL_SCALE.length]
+  }));
   const contractConfig: ChartConfig = { value: { label: 'Hợp đồng' } };
-  const contractData = data.byContractType.map((c, i) => ({
-    ...c,
-    fill: PALETTE[i % PALETTE.length]
-  }));
 
   const headcountConfig: ChartConfig = {
-    total: { label: 'Tổng nhân sự', color: 'var(--chart-1)' },
-    hires: { label: 'Tuyển mới', color: 'var(--chart-2)' }
+    total: { label: 'Tổng nhân sự', color: '#1d4ed8' },
+    hires: { label: 'Tuyển mới', color: '#0891b2' }
   };
 
   const payrollConfig: ChartConfig = {
-    gross: { label: 'Tổng thu nhập', color: 'var(--chart-1)' },
-    net: { label: 'Thực nhận', color: 'var(--chart-2)' }
+    gross: { label: 'Tổng thu nhập', color: '#2563eb' },
+    net: { label: 'Thực nhận', color: '#0f766e' }
   };
 
   return (
     <div className='grid grid-cols-1 gap-4 lg:grid-cols-6'>
-      {/* Cơ cấu theo phòng ban - donut có tổng ở giữa */}
-      <Card className='flex flex-col lg:col-span-2'>
-        <CardHeader className='items-center pb-0'>
-          <CardTitle>Cơ cấu theo phòng ban</CardTitle>
-          <CardDescription>Phân bổ nhân sự</CardDescription>
+      <Card className='overflow-hidden border-border/70 bg-gradient-to-br from-primary/5 via-background to-background lg:col-span-2'>
+        <CardHeader className='flex flex-row items-start justify-between gap-3'>
+          <div className='space-y-1'>
+            <CardTitle>Cơ cấu theo phòng ban</CardTitle>
+            <CardDescription>Donut đơn sắc theo tone thương hiệu</CardDescription>
+          </div>
+          {chartBadge(`${deptData.length} nhóm`)}
         </CardHeader>
-        <CardContent className='flex flex-1 items-center justify-center pb-2'>
+        <CardContent className='pb-3'>
           {deptData.length ? (
             <ChartContainer
               config={deptConfig}
-              className='mx-auto aspect-square max-h-[240px] w-full'
+              className='mx-auto aspect-square max-h-[250px] w-full'
             >
               <PieChart>
                 <ChartTooltip content={<ChartTooltipContent nameKey='name' hideLabel />} />
@@ -114,13 +155,17 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
                   data={deptData}
                   dataKey='value'
                   nameKey='name'
-                  innerRadius={58}
-                  outerRadius={90}
-                  paddingAngle={2}
+                  innerRadius={62}
+                  outerRadius={92}
+                  paddingAngle={3}
+                  cornerRadius={8}
                   stroke='var(--background)'
                   strokeWidth={2}
                 >
-                  <Label content={<CenterLabel value={deptTotal} />} />
+                  {deptData.map((entry) => (
+                    <Cell key={entry.name} fill={entry.fill} />
+                  ))}
+                  <Label content={<CenterLabel value={deptTotal} helper='nhân sự' />} />
                 </Pie>
               </PieChart>
             </ChartContainer>
@@ -130,15 +175,17 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
         </CardContent>
       </Card>
 
-      {/* Trạng thái - bar ngang, gọn và dễ đọc */}
-      <Card className='flex flex-col lg:col-span-2'>
-        <CardHeader>
-          <CardTitle>Theo trạng thái</CardTitle>
-          <CardDescription>Đang làm, thử việc, nghỉ...</CardDescription>
+      <Card className='overflow-hidden border-border/70 bg-gradient-to-br from-cyan-500/5 via-background to-background lg:col-span-2'>
+        <CardHeader className='flex flex-row items-start justify-between gap-3'>
+          <div className='space-y-1'>
+            <CardTitle>Trạng thái nhân sự</CardTitle>
+            <CardDescription>Thanh ngang tối giản, đọc nhanh theo nhóm</CardDescription>
+          </div>
+          {chartBadge('Live headcount')}
         </CardHeader>
-        <CardContent className='flex-1 pb-4'>
+        <CardContent className='pb-4'>
           {statusData.length ? (
-            <ChartContainer config={statusConfig} className='h-[240px] w-full'>
+            <ChartContainer config={statusConfig} className='h-[250px] w-full'>
               <BarChart
                 accessibilityLayer
                 data={statusData}
@@ -152,14 +199,14 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
                   type='category'
                   tickLine={false}
                   axisLine={false}
-                  width={96}
+                  width={104}
                   fontSize={12}
                 />
                 <ChartTooltip
                   cursor={false}
                   content={<ChartTooltipContent nameKey='label' hideLabel />}
                 />
-                <Bar dataKey='value' radius={6}>
+                <Bar dataKey='value' radius={8}>
                   {statusData.map((entry) => (
                     <Cell key={entry.status} fill={entry.fill} />
                   ))}
@@ -179,17 +226,19 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
         </CardContent>
       </Card>
 
-      {/* Giới tính - donut nhỏ + legend */}
-      <Card className='flex flex-col lg:col-span-2'>
-        <CardHeader className='items-center pb-0'>
-          <CardTitle>Cơ cấu giới tính</CardTitle>
-          <CardDescription>Tỷ lệ Nam / Nữ</CardDescription>
+      <Card className='overflow-hidden border-border/70 bg-gradient-to-br from-sky-500/5 via-background to-background lg:col-span-2'>
+        <CardHeader className='flex flex-row items-start justify-between gap-3'>
+          <div className='space-y-1'>
+            <CardTitle>Cơ cấu giới tính</CardTitle>
+            <CardDescription>Phân bổ tổng quan theo nhóm nhân sự</CardDescription>
+          </div>
+          {chartBadge(`${genderTotal} hồ sơ`)}
         </CardHeader>
-        <CardContent className='flex flex-1 items-center justify-center pb-2'>
+        <CardContent className='pb-3'>
           {genderData.length ? (
             <ChartContainer
               config={genderConfig}
-              className='mx-auto aspect-square max-h-[240px] w-full'
+              className='mx-auto aspect-square max-h-[250px] w-full'
             >
               <PieChart>
                 <ChartTooltip content={<ChartTooltipContent nameKey='label' hideLabel />} />
@@ -197,17 +246,21 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
                   data={genderData}
                   dataKey='value'
                   nameKey='label'
-                  innerRadius={58}
-                  outerRadius={90}
-                  paddingAngle={2}
+                  innerRadius={62}
+                  outerRadius={92}
+                  paddingAngle={3}
+                  cornerRadius={8}
                   stroke='var(--background)'
                   strokeWidth={2}
                 >
-                  <Label content={<CenterLabel value={genderTotal} />} />
+                  {genderData.map((entry) => (
+                    <Cell key={entry.gender} fill={entry.fill} />
+                  ))}
+                  <Label content={<CenterLabel value={genderTotal} helper='nhân sự' />} />
                 </Pie>
                 <ChartLegend
                   content={<ChartLegendContent nameKey='label' />}
-                  className='-translate-y-2 flex-wrap gap-2'
+                  className='flex-wrap gap-3 pt-0'
                 />
               </PieChart>
             </ChartContainer>
@@ -217,21 +270,29 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
         </CardContent>
       </Card>
 
-      {/* Loại hợp đồng - bar ngang */}
-      <Card className='flex flex-col lg:col-span-3'>
-        <CardHeader>
-          <CardTitle>Cơ cấu loại hợp đồng</CardTitle>
-          <CardDescription>Hợp đồng còn hiệu lực theo loại</CardDescription>
+      <Card className='overflow-hidden border-border/70 bg-gradient-to-br from-primary/5 via-background to-background lg:col-span-3'>
+        <CardHeader className='flex flex-row items-start justify-between gap-3'>
+          <div className='space-y-1'>
+            <CardTitle>Loại hợp đồng</CardTitle>
+            <CardDescription>Biểu đồ thanh ngang theo hợp đồng hiệu lực</CardDescription>
+          </div>
+          {chartBadge('Contract mix')}
         </CardHeader>
-        <CardContent className='flex-1 pb-4'>
+        <CardContent className='pb-4'>
           {contractData.length ? (
-            <ChartContainer config={contractConfig} className='h-[260px] w-full'>
+            <ChartContainer config={contractConfig} className='h-[270px] w-full'>
               <BarChart
                 accessibilityLayer
                 data={contractData}
                 layout='vertical'
                 margin={{ left: 4, right: 32 }}
               >
+                <defs>
+                  <linearGradient id='contractBarGradient' x1='0' y1='0' x2='1' y2='0'>
+                    <stop offset='0%' stopColor='#bfdbfe' />
+                    <stop offset='100%' stopColor='#2563eb' />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid horizontal={false} strokeDasharray='3 3' />
                 <XAxis type='number' dataKey='value' hide />
                 <YAxis
@@ -239,17 +300,14 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
                   type='category'
                   tickLine={false}
                   axisLine={false}
-                  width={150}
+                  width={160}
                   fontSize={12}
                 />
                 <ChartTooltip
                   cursor={false}
                   content={<ChartTooltipContent nameKey='label' hideLabel />}
                 />
-                <Bar dataKey='value' radius={6}>
-                  {contractData.map((entry) => (
-                    <Cell key={entry.type} fill={entry.fill} />
-                  ))}
+                <Bar dataKey='value' fill='url(#contractBarGradient)' radius={8}>
                   <LabelList
                     dataKey='value'
                     position='right'
@@ -266,20 +324,28 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
         </CardContent>
       </Card>
 
-      {/* Tăng trưởng nhân sự theo năm */}
-      <Card className='flex flex-col lg:col-span-3'>
-        <CardHeader>
-          <CardTitle>Tăng trưởng nhân sự</CardTitle>
-          <CardDescription>Tuyển mới & tổng nhân sự cộng dồn theo năm</CardDescription>
+      <Card className='overflow-hidden border-border/70 bg-gradient-to-br from-slate-500/5 via-background to-background lg:col-span-3'>
+        <CardHeader className='flex flex-row items-start justify-between gap-3'>
+          <div className='space-y-1'>
+            <CardTitle>Tăng trưởng nhân sự</CardTitle>
+            <CardDescription>Đường chính cho headcount, đường phụ cho tuyển mới</CardDescription>
+          </div>
+          {chartBadge('Year over year')}
         </CardHeader>
-        <CardContent className='flex-1 pb-4'>
+        <CardContent className='pb-4'>
           {data.headcountByYear.length ? (
-            <ChartContainer config={headcountConfig} className='h-[260px] w-full'>
+            <ChartContainer config={headcountConfig} className='h-[270px] w-full'>
               <LineChart
                 accessibilityLayer
                 data={data.headcountByYear}
                 margin={{ left: 4, right: 12 }}
               >
+                <defs>
+                  <linearGradient id='headcountGlow' x1='0' y1='0' x2='0' y2='1'>
+                    <stop offset='0%' stopColor='#1d4ed8' stopOpacity={0.18} />
+                    <stop offset='100%' stopColor='#1d4ed8' stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid vertical={false} strokeDasharray='3 3' />
                 <XAxis
                   dataKey='year'
@@ -291,21 +357,28 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
                 <YAxis tickLine={false} axisLine={false} width={32} fontSize={11} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <ChartLegend content={<ChartLegendContent />} />
+                <Area
+                  type='monotone'
+                  dataKey='total'
+                  fill='url(#headcountGlow)'
+                  stroke='none'
+                  isAnimationActive={false}
+                />
                 <Line
                   dataKey='total'
                   type='monotone'
                   stroke='var(--color-total)'
-                  strokeWidth={2.5}
-                  dot={{ r: 3, fill: 'var(--color-total)' }}
-                  activeDot={{ r: 5 }}
+                  strokeWidth={3}
+                  dot={{ r: 0 }}
+                  activeDot={{ r: 5, fill: 'var(--color-total)' }}
                 />
                 <Line
                   dataKey='hires'
                   type='monotone'
                   stroke='var(--color-hires)'
                   strokeWidth={2}
-                  strokeDasharray='4 4'
-                  dot={false}
+                  strokeDasharray='5 5'
+                  dot={{ r: 3, fill: 'var(--color-hires)' }}
                 />
               </LineChart>
             </ChartContainer>
@@ -315,28 +388,30 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
         </CardContent>
       </Card>
 
-      {/* Quỹ lương theo kỳ - area gradient */}
-      <Card className='flex flex-col lg:col-span-6'>
-        <CardHeader>
-          <CardTitle>Quỹ lương theo kỳ</CardTitle>
-          <CardDescription>Tổng thu nhập và thực nhận qua các kỳ lương</CardDescription>
+      <Card className='overflow-hidden border-border/70 bg-gradient-to-br from-primary/5 via-background to-background lg:col-span-6'>
+        <CardHeader className='flex flex-row items-start justify-between gap-3'>
+          <div className='space-y-1'>
+            <CardTitle>Quỹ lương theo kỳ</CardTitle>
+            <CardDescription>Hai lớp area mềm theo đúng tone xanh của hệ thống</CardDescription>
+          </div>
+          {chartBadge('Payroll trend')}
         </CardHeader>
         <CardContent className='pb-4'>
           {data.payrollByPeriod.length ? (
-            <ChartContainer config={payrollConfig} className='h-[300px] w-full'>
+            <ChartContainer config={payrollConfig} className='h-[320px] w-full'>
               <AreaChart
                 accessibilityLayer
                 data={data.payrollByPeriod}
                 margin={{ left: 12, right: 12 }}
               >
                 <defs>
-                  <linearGradient id='fillGross' x1='0' y1='0' x2='0' y2='1'>
-                    <stop offset='5%' stopColor='var(--color-gross)' stopOpacity={0.8} />
-                    <stop offset='95%' stopColor='var(--color-gross)' stopOpacity={0.05} />
+                  <linearGradient id='grossFill' x1='0' y1='0' x2='0' y2='1'>
+                    <stop offset='0%' stopColor='#2563eb' stopOpacity={0.34} />
+                    <stop offset='100%' stopColor='#2563eb' stopOpacity={0.04} />
                   </linearGradient>
-                  <linearGradient id='fillNet' x1='0' y1='0' x2='0' y2='1'>
-                    <stop offset='5%' stopColor='var(--color-net)' stopOpacity={0.8} />
-                    <stop offset='95%' stopColor='var(--color-net)' stopOpacity={0.05} />
+                  <linearGradient id='netFill' x1='0' y1='0' x2='0' y2='1'>
+                    <stop offset='0%' stopColor='#0f766e' stopOpacity={0.26} />
+                    <stop offset='100%' stopColor='#0f766e' stopOpacity={0.03} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid vertical={false} strokeDasharray='3 3' />
@@ -352,23 +427,25 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
                   axisLine={false}
                   width={56}
                   fontSize={11}
-                  tickFormatter={(v) => vnd(Number(v))}
+                  tickFormatter={(value) => vndShort(Number(value))}
                 />
-                <ChartTooltip content={<ChartTooltipContent formatter={(v) => vnd(Number(v))} />} />
+                <ChartTooltip
+                  content={<ChartTooltipContent formatter={(value) => vndShort(Number(value))} />}
+                />
                 <ChartLegend content={<ChartLegendContent />} />
                 <Area
                   dataKey='gross'
                   type='monotone'
-                  fill='url(#fillGross)'
+                  fill='url(#grossFill)'
                   stroke='var(--color-gross)'
-                  strokeWidth={2}
+                  strokeWidth={2.5}
                 />
                 <Area
                   dataKey='net'
                   type='monotone'
-                  fill='url(#fillNet)'
+                  fill='url(#netFill)'
                   stroke='var(--color-net)'
-                  strokeWidth={2}
+                  strokeWidth={2.5}
                 />
               </AreaChart>
             </ChartContainer>
@@ -377,35 +454,6 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function CenterLabel({
-  value,
-  viewBox
-}: {
-  value: number;
-  viewBox?: { cx?: number; cy?: number };
-}) {
-  if (!viewBox || typeof viewBox.cx !== 'number') return null;
-  const { cx, cy = 0 } = viewBox;
-  return (
-    <text x={cx} y={cy} textAnchor='middle' dominantBaseline='middle'>
-      <tspan x={cx} y={cy} className='fill-foreground text-2xl font-bold'>
-        {value.toLocaleString('vi-VN')}
-      </tspan>
-      <tspan x={cx} y={cy + 20} className='fill-muted-foreground text-xs'>
-        nhân sự
-      </tspan>
-    </text>
-  );
-}
-
-function EmptyChart() {
-  return (
-    <div className='text-muted-foreground flex h-[220px] w-full items-center justify-center text-sm'>
-      Chưa có dữ liệu để hiển thị.
     </div>
   );
 }
