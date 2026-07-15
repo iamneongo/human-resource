@@ -24,6 +24,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   shifts: 'Ca làm việc',
   devices: 'Thiết bị chấm công',
   timesheets: 'Bảng công',
+  'staffing-tracking': 'Định biên & tracking ngày',
   overtime: 'Làm thêm giờ',
   leaves: 'Nghỉ phép',
   'leave-balances': 'Số dư phép',

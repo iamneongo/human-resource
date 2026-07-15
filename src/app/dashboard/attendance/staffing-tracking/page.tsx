@@ -4,18 +4,17 @@ import PageContainer from '@/components/layout/page-container';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ConfirmDeleteDialog } from '@/features/hr/common/confirm-delete-dialog';
-import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
-import { departmentOptions } from '@/features/hr/common/lookups';
-import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
 import {
   deleteDailyStaffingTarget,
   getDailyStaffingTracking,
   upsertDailyStaffingTarget
 } from '@/features/hr/attendance/staffing-tracking';
+import { StaffingTrackingFilters } from '@/features/hr/attendance/staffing-tracking-filters';
 import { listShifts } from '@/features/hr/attendance/shifts';
+import { ConfirmDeleteDialog } from '@/features/hr/common/confirm-delete-dialog';
+import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
+import { departmentOptions } from '@/features/hr/common/lookups';
+import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
 import { formatNumber, formatVND } from '@/lib/format';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
 
@@ -31,6 +30,7 @@ function getQueryValue(value: string | string[] | undefined) {
 
 export default async function StaffingTrackingPage(props: PageProps) {
   const role = await getCurrentRole();
+
   if (!roleAtLeast(role, 'manager')) {
     return (
       <PageContainer
@@ -262,44 +262,16 @@ export default async function StaffingTrackingPage(props: PageProps) {
       }
     >
       <div className='space-y-6'>
-        <form
-          className='grid gap-3 rounded-2xl border bg-card p-4 md:grid-cols-[1fr_1fr_1fr_1fr_auto] md:items-end'
-          data-tour='staffing-filters'
-        >
-          <div className='space-y-1.5'>
-            <Label htmlFor='dateFrom'>Từ ngày</Label>
-            <Input
-              id='dateFrom'
-              name='dateFrom'
-              type='date'
-              defaultValue={tracking.filters.dateFrom}
-            />
-          </div>
-          <div className='space-y-1.5'>
-            <Label htmlFor='dateTo'>Đến ngày</Label>
-            <Input id='dateTo' name='dateTo' type='date' defaultValue={tracking.filters.dateTo} />
-          </div>
-          <FilterSelect
-            label='Bộ phận'
-            name='departmentId'
-            value={tracking.filters.departmentId}
-            placeholder='Tất cả bộ phận'
-            options={departments}
+        <div data-tour='staffing-filters'>
+          <StaffingTrackingFilters
+            dateFrom={tracking.filters.dateFrom}
+            dateTo={tracking.filters.dateTo}
+            departmentId={tracking.filters.departmentId}
+            shiftId={tracking.filters.shiftId}
+            departments={departments}
+            shifts={shiftOptions}
           />
-          <FilterSelect
-            label='Ca làm việc'
-            name='shiftId'
-            value={tracking.filters.shiftId}
-            placeholder='Tất cả ca'
-            options={shiftOptions}
-          />
-          <div className='flex gap-2'>
-            <Button type='submit'>Lọc dữ liệu</Button>
-            <Button asChild variant='outline'>
-              <Link href='/dashboard/attendance/staffing-tracking'>Mặc định tuần này</Link>
-            </Button>
-          </div>
-        </form>
+        </div>
 
         <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-5' data-tour='staffing-summary'>
           <SummaryCard
@@ -370,38 +342,5 @@ function SummaryCard({ title, value, helper }: { title: string; value: string; h
         <p className='text-muted-foreground mt-1 text-xs leading-5'>{helper}</p>
       </CardContent>
     </Card>
-  );
-}
-
-function FilterSelect({
-  label,
-  name,
-  value,
-  placeholder,
-  options
-}: {
-  label: string;
-  name: string;
-  value: string;
-  placeholder: string;
-  options: Array<{ value: string; label: string }>;
-}) {
-  return (
-    <div className='space-y-1.5'>
-      <Label htmlFor={name}>{label}</Label>
-      <select
-        id={name}
-        name={name}
-        defaultValue={value}
-        className='border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none'
-      >
-        <option value=''>{placeholder}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
   );
 }

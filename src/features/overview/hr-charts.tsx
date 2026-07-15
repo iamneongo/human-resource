@@ -23,7 +23,7 @@ import {
 
 import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   type ChartConfig,
   ChartContainer,
@@ -42,6 +42,10 @@ const vndShort = (n: number) =>
   n >= 1_000_000
     ? `${(n / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} trđ`
     : `${n.toLocaleString('vi-VN')} đ`;
+
+function safeChartNumber(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
 
 function chartBadge(label: string) {
   return (
@@ -71,6 +75,7 @@ function CenterLabel({
 }) {
   if (!viewBox || typeof viewBox.cx !== 'number') return null;
   const { cx, cy = 0 } = viewBox;
+
   return (
     <text x={cx} y={cy} textAnchor='middle' dominantBaseline='middle'>
       <tspan x={cx} y={cy - 2} className='fill-foreground text-2xl font-semibold'>
@@ -146,10 +151,7 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
     <div className='grid grid-cols-1 gap-4 lg:grid-cols-6'>
       <Card className='overflow-hidden border-border/70 bg-gradient-to-br from-primary/5 via-background to-background lg:col-span-2'>
         <CardHeader className='flex flex-row items-start justify-between gap-3'>
-          <div className='space-y-1'>
-            <CardTitle>Cơ cấu theo phòng ban</CardTitle>
-            <CardDescription>Donut đơn sắc theo tone thương hiệu</CardDescription>
-          </div>
+          <CardTitle>Cơ cấu theo phòng ban</CardTitle>
           {chartBadge(`${deptData.length} nhóm`)}
         </CardHeader>
         <CardContent className='pb-3'>
@@ -186,10 +188,7 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
 
       <Card className='overflow-hidden border-border/70 bg-gradient-to-br from-cyan-500/5 via-background to-background lg:col-span-2'>
         <CardHeader className='items-center pb-0 text-center'>
-          <div className='space-y-1'>
-            <CardTitle>Trạng thái nhân sự</CardTitle>
-            <CardDescription>Phân bổ nhân sự theo trạng thái hiện tại</CardDescription>
-          </div>
+          <CardTitle>Trạng thái nhân sự</CardTitle>
         </CardHeader>
         <CardContent className='pb-2'>
           {statusData.length ? (
@@ -236,9 +235,10 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
                       className='min-w-44 gap-2.5'
                       nameKey='status'
                       formatter={(value, name, item) => {
-                        const rawValue = Number(
-                          (item.payload as { value?: number } | undefined)?.value ?? 0
+                        const rawValue = safeChartNumber(
+                          (item?.payload as { value?: number } | undefined)?.value
                         );
+                        const score = safeChartNumber(value);
 
                         return (
                           <div className='flex w-full items-center justify-between gap-2'>
@@ -260,7 +260,7 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
                                 {rawValue.toLocaleString('vi-VN')}
                               </div>
                               <div className='text-muted-foreground text-[11px]'>
-                                {Number(value).toFixed(1)}%
+                                {score.toFixed(1)}%
                               </div>
                             </div>
                           </div>
@@ -280,8 +280,8 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
                     fill: '#fff',
                     fontSize: 11,
                     fontWeight: 600,
-                    formatter: (_value: unknown, entry: { value?: number }) =>
-                      entry.value?.toLocaleString('vi-VN') ?? '0'
+                    formatter: (_value: unknown, entry?: { value?: number }) =>
+                      safeChartNumber(entry?.value).toLocaleString('vi-VN')
                   }}
                 />
                 <ChartLegend
@@ -324,10 +324,7 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
 
       <Card className='overflow-hidden border-border/70 bg-gradient-to-br from-sky-500/5 via-background to-background lg:col-span-2'>
         <CardHeader className='flex flex-row items-start justify-between gap-3'>
-          <div className='space-y-1'>
-            <CardTitle>Cơ cấu giới tính</CardTitle>
-            <CardDescription>Phân bổ tổng quan theo nhóm nhân sự</CardDescription>
-          </div>
+          <CardTitle>Cơ cấu giới tính</CardTitle>
           {chartBadge(`${genderTotal} hồ sơ`)}
         </CardHeader>
         <CardContent className='pb-3'>
@@ -368,11 +365,8 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
 
       <Card className='overflow-hidden border-border/70 bg-gradient-to-br from-primary/5 via-background to-background lg:col-span-3'>
         <CardHeader className='flex flex-row items-start justify-between gap-3'>
-          <div className='space-y-1'>
-            <CardTitle>Loại hợp đồng</CardTitle>
-            <CardDescription>Biểu đồ thanh ngang theo hợp đồng hiệu lực</CardDescription>
-          </div>
-          {chartBadge('Contract mix')}
+          <CardTitle>Loại hợp đồng</CardTitle>
+          {chartBadge('Cơ cấu hợp đồng')}
         </CardHeader>
         <CardContent className='pb-4'>
           {contractData.length ? (
@@ -414,11 +408,8 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
 
       <Card className='overflow-hidden border-border/70 bg-gradient-to-br from-slate-500/5 via-background to-background lg:col-span-3'>
         <CardHeader className='flex flex-row items-start justify-between gap-3'>
-          <div className='space-y-1'>
-            <CardTitle>Tăng trưởng nhân sự</CardTitle>
-            <CardDescription>Đường chính cho headcount, đường phụ cho tuyển mới</CardDescription>
-          </div>
-          {chartBadge('Year over year')}
+          <CardTitle>Tăng trưởng nhân sự</CardTitle>
+          {chartBadge('Theo năm')}
         </CardHeader>
         <CardContent className='pb-4'>
           {data.headcountByYear.length ? (
@@ -478,11 +469,8 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
 
       <Card className='overflow-hidden border-border/70 bg-gradient-to-br from-primary/5 via-background to-background lg:col-span-6'>
         <CardHeader className='flex flex-row items-start justify-between gap-3'>
-          <div className='space-y-1'>
-            <CardTitle>Quỹ lương theo kỳ</CardTitle>
-            <CardDescription>Hai lớp area mềm theo đúng tone xanh của hệ thống</CardDescription>
-          </div>
-          {chartBadge('Payroll trend')}
+          <CardTitle>Quỹ lương theo kỳ</CardTitle>
+          {chartBadge('Xu hướng lương')}
         </CardHeader>
         <CardContent className='pb-4'>
           {data.payrollByPeriod.length ? (
