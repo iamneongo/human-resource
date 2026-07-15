@@ -8,11 +8,13 @@ import {
   CartesianGrid,
   Cell,
   Label,
-  LabelList,
   Line,
   LineChart,
   Pie,
   PieChart,
+  PolarAngleAxis,
+  RadialBar,
+  RadialBarChart,
   XAxis,
   YAxis
 } from 'recharts';
@@ -32,13 +34,12 @@ import {
 import type { HrDashboardData } from './hr-dashboard';
 
 const COOL_SCALE = ['#1d4ed8', '#2563eb', '#0891b2', '#0f766e', '#475569'];
-
 const COOL_MONO = ['#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa', '#2563eb'];
 
 const vndShort = (n: number) =>
   n >= 1_000_000
-    ? `${(n / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr₫`
-    : `${n.toLocaleString('vi-VN')} ₫`;
+    ? `${(n / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} trđ`
+    : `${n.toLocaleString('vi-VN')} đ`;
 
 function chartBadge(label: string) {
   return (
@@ -91,6 +92,11 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
   const statusData = data.byStatus.map((item, index) => ({
     ...item,
     fill: COOL_SCALE[index % COOL_SCALE.length]
+  }));
+  const statusTotal = statusData.reduce((sum, item) => sum + item.value, 0);
+  const statusRingData = statusData.map((item) => ({
+    ...item,
+    percent: statusTotal > 0 ? Number(((item.value / statusTotal) * 100).toFixed(1)) : 0
   }));
   const statusConfig: ChartConfig = Object.fromEntries(
     statusData.map((item) => [
@@ -179,46 +185,75 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
         <CardHeader className='flex flex-row items-start justify-between gap-3'>
           <div className='space-y-1'>
             <CardTitle>Trạng thái nhân sự</CardTitle>
-            <CardDescription>Thanh ngang tối giản, đọc nhanh theo nhóm</CardDescription>
+            <CardDescription>
+              Vòng tỷ lệ theo nhóm, dễ đọc cả khi chỉ có một trạng thái
+            </CardDescription>
           </div>
           {chartBadge('Live headcount')}
         </CardHeader>
         <CardContent className='pb-4'>
           {statusData.length ? (
             <ChartContainer config={statusConfig} className='h-[250px] w-full'>
-              <BarChart
-                accessibilityLayer
-                data={statusData}
-                layout='vertical'
-                margin={{ left: 4, right: 32 }}
-              >
-                <CartesianGrid horizontal={false} strokeDasharray='3 3' />
-                <XAxis type='number' dataKey='value' hide />
-                <YAxis
-                  dataKey='label'
-                  type='category'
-                  tickLine={false}
-                  axisLine={false}
-                  width={104}
-                  fontSize={12}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent nameKey='label' hideLabel />}
-                />
-                <Bar dataKey='value' radius={8}>
-                  {statusData.map((entry) => (
-                    <Cell key={entry.status} fill={entry.fill} />
-                  ))}
-                  <LabelList
-                    dataKey='value'
-                    position='right'
-                    offset={8}
-                    className='fill-foreground'
-                    fontSize={12}
+              <div className='grid h-full gap-4 lg:grid-cols-[minmax(0,1fr)_140px] lg:items-center'>
+                <RadialBarChart
+                  accessibilityLayer
+                  data={statusRingData}
+                  innerRadius='24%'
+                  outerRadius='88%'
+                  barSize={18}
+                  startAngle={90}
+                  endAngle={-270}
+                >
+                  <PolarAngleAxis type='number' domain={[0, 100]} tick={false} />
+                  <ChartTooltip
+                    cursor={false}
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value, _name, item) => {
+                          const payload = item.payload as { value: number; percent: number };
+                          return `${payload.value.toLocaleString('vi-VN')} nhân sự (${payload.percent}%)`;
+                        }}
+                        nameKey='label'
+                        hideLabel
+                      />
+                    }
                   />
-                </Bar>
-              </BarChart>
+                  {statusRingData.map((entry) => (
+                    <RadialBar
+                      key={entry.status}
+                      data={[entry]}
+                      dataKey='percent'
+                      cornerRadius={999}
+                      fill={entry.fill}
+                      background={{ fill: 'color-mix(in oklab, var(--muted) 55%, transparent)' }}
+                    />
+                  ))}
+                  <Label content={<CenterLabel value={statusTotal} helper='nhân sự' />} />
+                </RadialBarChart>
+
+                <div className='space-y-3'>
+                  {statusRingData.map((item) => (
+                    <div
+                      key={item.status}
+                      className='rounded-2xl border border-border/60 bg-background/80 px-3 py-2'
+                    >
+                      <div className='flex items-center gap-2 text-sm font-medium'>
+                        <span
+                          className='size-2.5 rounded-full'
+                          style={{ backgroundColor: item.fill }}
+                        />
+                        <span className='truncate'>{item.label}</span>
+                      </div>
+                      <div className='mt-1 flex items-end justify-between gap-3'>
+                        <span className='text-lg font-semibold'>
+                          {item.value.toLocaleString('vi-VN')}
+                        </span>
+                        <span className='text-muted-foreground text-xs'>{item.percent}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </ChartContainer>
           ) : (
             <EmptyChart />
@@ -307,15 +342,7 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
                   cursor={false}
                   content={<ChartTooltipContent nameKey='label' hideLabel />}
                 />
-                <Bar dataKey='value' fill='url(#contractBarGradient)' radius={8}>
-                  <LabelList
-                    dataKey='value'
-                    position='right'
-                    offset={8}
-                    className='fill-foreground'
-                    fontSize={12}
-                  />
-                </Bar>
+                <Bar dataKey='value' fill='url(#contractBarGradient)' radius={8} />
               </BarChart>
             </ChartContainer>
           ) : (
