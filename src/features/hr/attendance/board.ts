@@ -2,7 +2,7 @@
 
 import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
-import { and, asc, desc, eq, gte, inArray, lte } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, ilike, inArray, lte, or } from 'drizzle-orm';
 
 import { db } from '@/db';
 import {
@@ -62,7 +62,19 @@ export type AttendanceBoardData = {
   weekDates: string[];
   shifts: AttendanceBoardShift[];
   employees: AttendanceBoardEmployee[];
+  page: number;
+  perPage: number;
+  totalEmployees: number;
+  pageCount: number;
+  searchQuery: string;
   lock: AttendanceBoardLock;
+};
+
+type AttendanceBoardFilters = {
+  weekStart?: string;
+  page?: number;
+  perPage?: number;
+  search?: string;
 };
 
 export type SaveAttendanceBoardRowInput = {
@@ -212,14 +224,37 @@ function addConflict(conflicts: string[], message: string) {
 }
 
 export async function getAttendanceBoardData(
-  weekStartInput?: string
+  filters?: AttendanceBoardFilters
 ): Promise<AttendanceBoardData> {
   await requireRole('manager');
 
-  const { weekStart, weekEnd, weekDates } = getWeekDates(weekStartInput);
+  const { weekStart, weekEnd, weekDates } = getWeekDates(filters?.weekStart);
   const lock = await getAttendanceLockStatus(weekStart, weekEnd, weekDates);
+  const page = Math.max(1, filters?.page ?? 1);
+  const perPage = Math.min(100, Math.max(10, filters?.perPage ?? 10));
+  const searchQuery = filters?.search?.trim() ?? '';
+  const employeeFilter = and(
+    inArray(employees.status, ['active', 'probation', 'on_leave']),
+    searchQuery
+      ? or(
+          ilike(employees.fullName, `%${searchQuery}%`),
+          ilike(employees.employeeCode, `%${searchQuery}%`),
+          ilike(departments.name, `%${searchQuery}%`),
+          ilike(positions.title, `%${searchQuery}%`)
+        )
+      : undefined
+  );
 
   const shiftRows = await db.select().from(shifts).orderBy(asc(shifts.code));
+  const [{ totalEmployees }] = await db
+    .select({ totalEmployees: count() })
+    .from(employees)
+    .leftJoin(departments, eq(employees.departmentId, departments.id))
+    .leftJoin(positions, eq(employees.positionId, positions.id))
+    .where(employeeFilter);
+  const safeTotalEmployees = Number(totalEmployees ?? 0);
+  const pageCount = Math.max(1, Math.ceil(safeTotalEmployees / perPage));
+  const currentPage = Math.min(page, pageCount);
   const employeeRows = await db
     .select({
       id: employees.id,
@@ -231,8 +266,10 @@ export async function getAttendanceBoardData(
     .from(employees)
     .leftJoin(departments, eq(employees.departmentId, departments.id))
     .leftJoin(positions, eq(employees.positionId, positions.id))
-    .where(inArray(employees.status, ['active', 'probation', 'on_leave']))
-    .orderBy(asc(employees.employeeCode));
+    .where(employeeFilter)
+    .orderBy(asc(employees.employeeCode))
+    .limit(perPage)
+    .offset((currentPage - 1) * perPage);
 
   const employeeIds = employeeRows.map((row) => row.id);
   const [timesheetRows, manualRows, otRows, leaveRows] = await Promise.all([
@@ -418,6 +455,11 @@ export async function getAttendanceBoardData(
     weekStart,
     weekEnd,
     weekDates,
+    page: currentPage,
+    perPage,
+    totalEmployees: safeTotalEmployees,
+    pageCount,
+    searchQuery,
     shifts: shiftRows.map((row) => ({
       id: row.id,
       code: row.code,

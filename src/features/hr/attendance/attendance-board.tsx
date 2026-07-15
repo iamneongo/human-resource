@@ -1,10 +1,14 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import type { ColumnDef, PaginationState, Updater } from '@tanstack/react-table';
+import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { Icons } from '@/components/icons';
+import { DataTable } from '@/components/ui/table/data-table';
+import { DataTableColumnHeader } from '@/components/ui/table/data-table-column-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -82,11 +86,16 @@ export function AttendanceBoard({
   weekDates,
   shifts,
   employees,
+  page,
+  perPage,
+  totalEmployees,
+  pageCount,
+  searchQuery,
   lock,
   canEdit
 }: AttendanceBoardProps) {
   const router = useRouter();
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState(searchQuery);
   const [anchorDate, setAnchorDate] = useState(weekStart);
   const [rows, setRows] = useState(() => employees.map(copyRow));
   const [pendingSaveId, setPendingSaveId] = useState<string | null>(null);
@@ -95,18 +104,15 @@ export function AttendanceBoard({
   const [isRouting, startRouting] = useTransition();
   const [isSaving, startSaving] = useTransition();
 
+  useEffect(() => {
+    setRows(employees.map(copyRow));
+  }, [employees]);
+
+  useEffect(() => {
+    setSearchInput(searchQuery);
+  }, [searchQuery]);
+
   const shiftMap = useMemo(() => new Map(shifts.map((shift) => [shift.id, shift])), [shifts]);
-
-  const filteredRows = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    if (!keyword) return rows;
-
-    return rows.filter((row) =>
-      `${row.employeeCode} ${row.fullName} ${row.departmentName ?? ''} ${row.positionTitle ?? ''}`
-        .toLowerCase()
-        .includes(keyword)
-    );
-  }, [rows, search]);
 
   const totals = useMemo(() => {
     const employeesCount = rows.length;
@@ -119,11 +125,41 @@ export function AttendanceBoard({
     };
   }, [rows]);
 
-  function navigateToWeek(nextWeekStart: string) {
+  function replaceQuery(updates: Record<string, string | null>) {
     startRouting(() => {
       const params = new URLSearchParams(window.location.search);
-      params.set('weekStart', nextWeekStart);
+
+      for (const [key, value] of Object.entries(updates)) {
+        if (!value) {
+          params.delete(key);
+        } else {
+          params.set(key, value);
+        }
+      }
+
       router.replace(`/dashboard/attendance/timesheets?${params.toString()}`);
+    });
+  }
+
+  useEffect(() => {
+    const nextSearch = searchInput.trim();
+    const currentSearch = searchQuery.trim();
+    if (nextSearch === currentSearch) return;
+
+    const timeout = window.setTimeout(() => {
+      replaceQuery({
+        search: nextSearch || null,
+        page: '1'
+      });
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchInput, searchQuery]);
+
+  function navigateToWeek(nextWeekStart: string) {
+    replaceQuery({
+      weekStart: nextWeekStart,
+      page: '1'
     });
   }
 
@@ -240,6 +276,237 @@ export function AttendanceBoard({
     });
   }
 
+  const columns = useMemo<ColumnDef<DraftRow>[]>(
+    () => [
+      {
+        id: 'employee',
+        accessorFn: (row) => `${row.employeeCode} ${row.fullName}`,
+        header: ({ column }) => <DataTableColumnHeader column={column} title='Nhân viên' />,
+        cell: ({ row }) => {
+          const record = row.original;
+          return (
+            <div className='min-w-[200px]'>
+              <div className='font-medium'>{record.fullName}</div>
+              <div className='text-muted-foreground text-xs'>{record.employeeCode}</div>
+              {record.conflictCount > 0 ? (
+                <div className='mt-1 text-xs text-amber-600'>
+                  {record.conflictCount} cảnh báo dữ liệu
+                </div>
+              ) : null}
+            </div>
+          );
+        },
+        size: 240
+      },
+      {
+        id: 'department',
+        accessorFn: (row) => row.departmentName ?? '',
+        header: ({ column }) => <DataTableColumnHeader column={column} title='Phòng ban' />,
+        cell: ({ row }) => (
+          <span className='text-muted-foreground'>{row.original.departmentName ?? '—'}</span>
+        ),
+        size: 180
+      },
+      {
+        id: 'position',
+        accessorFn: (row) => row.positionTitle ?? '',
+        header: ({ column }) => <DataTableColumnHeader column={column} title='Chức vụ' />,
+        cell: ({ row }) => (
+          <span className='text-muted-foreground'>{row.original.positionTitle ?? '—'}</span>
+        ),
+        size: 180
+      },
+      {
+        id: 'shift',
+        accessorFn: (row) => row.shiftCode ?? row.shiftName ?? '',
+        header: ({ column }) => <DataTableColumnHeader column={column} title='Ca' />,
+        cell: ({ row }) => {
+          const record = row.original;
+          return (
+            <Select
+              value={record.shiftId ?? undefined}
+              onValueChange={(value) => updateShift(record.id, value)}
+              disabled={!canEdit || shifts.length === 0 || lock.isLocked}
+            >
+              <SelectTrigger
+                className='h-9 w-[180px]'
+                aria-label={`Chọn ca cho ${record.fullName}`}
+              >
+                <SelectValue placeholder='Chọn ca' />
+              </SelectTrigger>
+              <SelectContent>
+                {shifts.map((shift) => (
+                  <SelectItem key={shift.id} value={shift.id}>
+                    {shift.code} · {shift.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+        },
+        size: 210,
+        enableSorting: false
+      },
+      ...weekDates.map<ColumnDef<DraftRow>>((date, index) => ({
+        id: date,
+        accessorFn: (row) => countShiftParts({ [date]: row.cells[date] }),
+        header: () => <div className='text-center'>{formatDateLabel(date, index)}</div>,
+        cell: ({ row }) => {
+          const record = row.original;
+          const cell = copyCell(record.cells[date]);
+          return (
+            <div className='flex min-w-[72px] flex-col items-center gap-1'>
+              <Button
+                type='button'
+                size='sm'
+                variant={cell.morning ? 'default' : 'outline'}
+                onClick={() => updateCell(record.id, date, 'morning', !cell.morning)}
+                disabled={!canEdit || lock.isLocked}
+                aria-label={`Bật tắt ca sáng ngày ${date} của ${record.fullName}`}
+                className={cn('h-7 w-14 px-0 text-xs', cell.morning && 'shadow-none')}
+              >
+                S
+              </Button>
+              <Button
+                type='button'
+                size='sm'
+                variant={cell.afternoon ? 'default' : 'outline'}
+                onClick={() => updateCell(record.id, date, 'afternoon', !cell.afternoon)}
+                disabled={!canEdit || lock.isLocked}
+                aria-label={`Bật tắt ca chiều ngày ${date} của ${record.fullName}`}
+                className={cn('h-7 w-14 px-0 text-xs', cell.afternoon && 'shadow-none')}
+              >
+                C
+              </Button>
+              {cell.source === 'manual' ? (
+                <span className='text-[10px] text-blue-600'>Manual</span>
+              ) : null}
+              {cell.conflicts.length > 0 ? (
+                <span
+                  className='text-center text-[10px] leading-3 text-amber-600'
+                  title={cell.conflicts.join('\n')}
+                >
+                  {cell.conflicts.length} cảnh báo
+                </span>
+              ) : null}
+            </div>
+          );
+        },
+        size: 96,
+        enableSorting: false
+      })),
+      {
+        id: 'total',
+        accessorFn: (row) => countShiftParts(row.cells) / 2,
+        header: ({ column }) => <DataTableColumnHeader column={column} title='Tổng' />,
+        cell: ({ row }) => {
+          const shiftParts = countShiftParts(row.original.cells);
+          return (
+            <div className='min-w-[96px] text-right'>
+              <div className='font-semibold'>{(shiftParts / 2).toFixed(1)} công</div>
+              <div className='text-muted-foreground text-xs'>{shiftParts} nửa ca</div>
+            </div>
+          );
+        },
+        size: 110
+      },
+      {
+        id: 'standardHours',
+        accessorFn: (row) => (row.standardHours * countShiftParts(row.cells)) / 2,
+        header: ({ column }) => <DataTableColumnHeader column={column} title='Giờ chuẩn' />,
+        cell: ({ row }) => {
+          const record = row.original;
+          const workedHours = ((record.standardHours * countShiftParts(record.cells)) / 2).toFixed(
+            1
+          );
+          return (
+            <div className='min-w-[120px] text-right'>
+              <div className='font-semibold'>{workedHours}h</div>
+              <div className='text-muted-foreground text-xs'>
+                {record.shiftCode ?? '—'} · {record.standardHours}h/ngày
+              </div>
+            </div>
+          );
+        },
+        size: 140
+      },
+      {
+        id: 'actions',
+        accessorFn: (row) => row.id,
+        header: () => <div className='text-right'>Thao tác</div>,
+        cell: ({ row }) => {
+          const record = row.original;
+          const isSavingRow = pendingSaveId === record.id && isSaving;
+          const isClearingRow = pendingClearId === record.id && isSaving;
+
+          return (
+            <div className='flex min-w-[210px] justify-end gap-2'>
+              <Button
+                type='button'
+                size='sm'
+                variant='outline'
+                onClick={() => handleClear(record)}
+                isLoading={isClearingRow}
+                disabled={!canEdit || isSavingRow || lock.isLocked}
+                aria-label={`Xóa chấm công tuần của ${record.fullName}`}
+              >
+                <Icons.trash className='h-4 w-4' />
+                Xóa tuần
+              </Button>
+              <Button
+                type='button'
+                size='sm'
+                onClick={() => handleSave(record)}
+                isLoading={isSavingRow}
+                disabled={!canEdit || isClearingRow || lock.isLocked}
+                aria-label={`Lưu chấm công tuần của ${record.fullName}`}
+              >
+                <Icons.check className='h-4 w-4' />
+                Lưu
+              </Button>
+            </div>
+          );
+        },
+        size: 220,
+        enableSorting: false
+      }
+    ],
+    [canEdit, isSaving, lock.isLocked, pendingClearId, pendingSaveId, shifts, weekDates]
+  );
+
+  const table = useReactTable({
+    data: rows,
+    columns,
+    state: {
+      columnPinning: {
+        left: ['employee', 'department', 'position', 'shift'],
+        right: ['actions']
+      },
+      pagination: {
+        pageIndex: page - 1,
+        pageSize: perPage
+      }
+    },
+    onPaginationChange: (updaterOrValue: Updater<PaginationState>) => {
+      const nextPagination =
+        typeof updaterOrValue === 'function'
+          ? updaterOrValue({
+              pageIndex: page - 1,
+              pageSize: perPage
+            })
+          : updaterOrValue;
+
+      replaceQuery({
+        page: String(nextPagination.pageIndex + 1),
+        perPage: String(nextPagination.pageSize)
+      });
+    },
+    getCoreRowModel: getCoreRowModel(),
+    manualPagination: true,
+    pageCount,
+    rowCount: totalEmployees
+  });
+
   return (
     <div className='space-y-4'>
       <div className='grid gap-3 md:grid-cols-4'>
@@ -254,12 +521,16 @@ export function AttendanceBoard({
           <div className='text-muted-foreground text-xs uppercase tracking-wide'>
             Nhân sự hiển thị
           </div>
-          <div className='mt-2 text-xl font-semibold'>{totals.employeesCount}</div>
-          <div className='text-muted-foreground mt-1 text-sm'>Đang làm, thử việc, nghỉ phép</div>
+          <div className='mt-2 text-xl font-semibold'>
+            {totals.employeesCount}/{totalEmployees}
+          </div>
+          <div className='text-muted-foreground mt-1 text-sm'>
+            Page {page}/{pageCount} theo bộ lọc hiện tại
+          </div>
         </div>
         <div className='rounded-xl border bg-card p-4'>
           <div className='text-muted-foreground text-xs uppercase tracking-wide'>
-            Tổng công tuần này
+            Tổng công trang này
           </div>
           <div className='mt-2 text-xl font-semibold'>{totals.workdays.toFixed(1)} công</div>
           <div className='text-muted-foreground mt-1 text-sm'>Tính theo số nửa ca đã chọn</div>
@@ -327,8 +598,8 @@ export function AttendanceBoard({
             <div className='space-y-1'>
               <div className='text-muted-foreground text-xs font-medium'>Tìm nhân viên</div>
               <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
                 placeholder='Mã NV, họ tên, phòng ban...'
                 className='h-9'
               />
@@ -343,8 +614,8 @@ export function AttendanceBoard({
         </div>
 
         <div className='text-muted-foreground text-sm'>
-          Chấm công theo lưới sáng/chiều, nhưng dữ liệu nhập tay được lưu riêng để không ghi đè
-          timesheet chi tiết. Những ngày đã có timesheet, OT hoặc nghỉ phép sẽ được gắn cảnh báo.
+          Chấm công theo lưới sáng/chiều. Màn này hiện chỉ tải đúng trang nhân sự đang xem để giảm
+          thời gian tải; dữ liệu công thủ công vẫn override timesheet của cùng ngày như cũ.
         </div>
 
         {lock.message ? (
@@ -367,164 +638,8 @@ export function AttendanceBoard({
         ) : null}
       </div>
 
-      <div className='overflow-x-auto rounded-xl border bg-card'>
-        <table className='min-w-[1480px] w-full border-collapse text-sm'>
-          <thead className='bg-muted/40'>
-            <tr className='border-b'>
-              <th className='px-3 py-3 text-left font-medium'>Nhân viên</th>
-              <th className='px-3 py-3 text-left font-medium'>Phòng ban</th>
-              <th className='px-3 py-3 text-left font-medium'>Chức vụ</th>
-              <th className='px-3 py-3 text-left font-medium'>Ca</th>
-              {weekDates.map((date, index) => (
-                <th key={date} className='px-2 py-3 text-center font-medium'>
-                  {formatDateLabel(date, index)}
-                </th>
-              ))}
-              <th className='px-3 py-3 text-right font-medium'>Tổng</th>
-              <th className='px-3 py-3 text-right font-medium'>Giờ chuẩn</th>
-              <th className='px-3 py-3 text-right font-medium'>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.length > 0 ? (
-              filteredRows.map((row) => {
-                const shiftParts = countShiftParts(row.cells);
-                const workdays = shiftParts / 2;
-                const workedHours = ((row.standardHours * shiftParts) / 2).toFixed(1);
-                const isSavingRow = pendingSaveId === row.id && isSaving;
-                const isClearingRow = pendingClearId === row.id && isSaving;
-
-                return (
-                  <tr key={row.id} className='border-b align-top last:border-b-0'>
-                    <td className='px-3 py-3'>
-                      <div className='font-medium'>{row.fullName}</div>
-                      <div className='text-muted-foreground text-xs'>{row.employeeCode}</div>
-                      {row.conflictCount > 0 ? (
-                        <div className='mt-1 text-xs text-amber-600'>
-                          {row.conflictCount} cảnh báo dữ liệu
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className='text-muted-foreground px-3 py-3'>{row.departmentName ?? '—'}</td>
-                    <td className='text-muted-foreground px-3 py-3'>{row.positionTitle ?? '—'}</td>
-                    <td className='px-3 py-3'>
-                      <Select
-                        value={row.shiftId ?? undefined}
-                        onValueChange={(value) => updateShift(row.id, value)}
-                        disabled={!canEdit || shifts.length === 0 || lock.isLocked}
-                      >
-                        <SelectTrigger
-                          className='h-9 w-[180px]'
-                          aria-label={`Chọn ca cho ${row.fullName}`}
-                        >
-                          <SelectValue placeholder='Chọn ca' />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {shifts.map((shift) => (
-                            <SelectItem key={shift.id} value={shift.id}>
-                              {shift.code} · {shift.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    {weekDates.map((date) => {
-                      const cell = copyCell(row.cells[date]);
-                      return (
-                        <td key={date} className='px-2 py-3'>
-                          <div className='flex flex-col items-center gap-1'>
-                            <Button
-                              type='button'
-                              size='sm'
-                              variant={cell.morning ? 'default' : 'outline'}
-                              onClick={() => updateCell(row.id, date, 'morning', !cell.morning)}
-                              disabled={!canEdit || lock.isLocked}
-                              aria-label={`Bật tắt ca sáng ngày ${date} của ${row.fullName}`}
-                              className={cn('h-7 w-14 px-0 text-xs', cell.morning && 'shadow-none')}
-                            >
-                              S
-                            </Button>
-                            <Button
-                              type='button'
-                              size='sm'
-                              variant={cell.afternoon ? 'default' : 'outline'}
-                              onClick={() => updateCell(row.id, date, 'afternoon', !cell.afternoon)}
-                              disabled={!canEdit || lock.isLocked}
-                              aria-label={`Bật tắt ca chiều ngày ${date} của ${row.fullName}`}
-                              className={cn(
-                                'h-7 w-14 px-0 text-xs',
-                                cell.afternoon && 'shadow-none'
-                              )}
-                            >
-                              C
-                            </Button>
-                            {cell.source === 'manual' ? (
-                              <span className='text-[10px] text-blue-600'>Manual</span>
-                            ) : null}
-                            {cell.conflicts.length > 0 ? (
-                              <span
-                                className='text-center text-[10px] leading-3 text-amber-600'
-                                title={cell.conflicts.join('\n')}
-                              >
-                                {cell.conflicts.length} cảnh báo
-                              </span>
-                            ) : null}
-                          </div>
-                        </td>
-                      );
-                    })}
-                    <td className='px-3 py-3 text-right'>
-                      <div className='font-semibold'>{workdays.toFixed(1)} công</div>
-                      <div className='text-muted-foreground text-xs'>{shiftParts} nửa ca</div>
-                    </td>
-                    <td className='px-3 py-3 text-right'>
-                      <div className='font-semibold'>{workedHours}h</div>
-                      <div className='text-muted-foreground text-xs'>
-                        {row.shiftCode ?? '—'} · {row.standardHours}h/ngày
-                      </div>
-                    </td>
-                    <td className='px-3 py-3'>
-                      <div className='flex justify-end gap-2'>
-                        <Button
-                          type='button'
-                          size='sm'
-                          variant='outline'
-                          onClick={() => handleClear(row)}
-                          isLoading={isClearingRow}
-                          disabled={!canEdit || isSavingRow || lock.isLocked}
-                          aria-label={`Xóa chấm công tuần của ${row.fullName}`}
-                        >
-                          <Icons.trash className='h-4 w-4' />
-                          Xóa tuần
-                        </Button>
-                        <Button
-                          type='button'
-                          size='sm'
-                          onClick={() => handleSave(row)}
-                          isLoading={isSavingRow}
-                          disabled={!canEdit || isClearingRow || lock.isLocked}
-                          aria-label={`Lưu chấm công tuần của ${row.fullName}`}
-                        >
-                          <Icons.check className='h-4 w-4' />
-                          Lưu
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td
-                  colSpan={weekDates.length + 7}
-                  className='text-muted-foreground px-4 py-10 text-center'
-                >
-                  Không có nhân viên phù hợp với bộ lọc hiện tại.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className='rounded-xl border bg-card p-4'>
+        <DataTable table={table} emptyText='Không có nhân sự phù hợp với bộ lọc hiện tại.' />
       </div>
     </div>
   );

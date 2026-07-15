@@ -1,17 +1,25 @@
-'use client';
-
 import PageContainer from '@/components/layout/page-container';
 import { teamInfoContent } from '@/config/infoconfig';
-import { OrganizationProfile } from '@clerk/nextjs';
+import { getWorkspaceTeamData } from '@/features/workspaces/actions';
+import { WorkspaceTeamPage } from '@/features/workspaces/components/workspace-team-page';
 
-export default function TeamPage() {
+export default async function TeamPage() {
+  const data = await getWorkspaceTeamData();
+
   return (
     <PageContainer
-      pageTitle='Thành viên tổ chức'
-      pageDescription='Bạn có thể mời thành viên mới bằng email ngay trong mục Members của Clerk Organization Profile.'
+      pageTitle='Thành viên workspace'
+      pageDescription='Mời thành viên mới vào đúng workspace hiện tại, theo dõi lời mời và đảm bảo mọi người dùng chung toàn bộ dữ liệu.'
       infoContent={teamInfoContent}
+      access={!!data}
+      accessFallback={
+        <div className='text-muted-foreground max-w-xl text-center text-base'>
+          Tài khoản này chưa có workspace đang hoạt động. Hãy đăng nhập bằng tài khoản đã được mời
+          vào tổ chức hiện tại.
+        </div>
+      }
     >
-      <OrganizationProfile />
+      {data ? <WorkspaceTeamPage data={data} /> : <div />}
     </PageContainer>
   );
 }
