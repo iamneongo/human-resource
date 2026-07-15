@@ -87,6 +87,13 @@ export const navGroups: NavGroup[] = [
     label: 'Quản trị',
     items: [
       {
+        title: 'Thành viên workspace',
+        url: '/dashboard/workspaces/team',
+        icon: 'teams',
+        isActive: false,
+        items: []
+      },
+      {
         title: 'Cơ cấu tổ chức',
         url: '#',
         icon: 'workspace',
@@ -96,13 +103,6 @@ export const navGroups: NavGroup[] = [
           { title: 'Phòng ban', url: '/dashboard/org/departments' },
           { title: 'Chức vụ', url: '/dashboard/org/positions' }
         ]
-      },
-      {
-        title: 'Import nhân viên',
-        url: '/dashboard/org/import',
-        icon: 'upload',
-        isActive: false,
-        items: []
       },
       {
         title: 'Hồ sơ cá nhân',

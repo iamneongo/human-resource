@@ -6,17 +6,25 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import { ConfirmDeleteDialog } from '@/features/hr/common/confirm-delete-dialog';
+import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
 import { departmentOptions } from '@/features/hr/common/lookups';
-import { listShifts } from '@/features/hr/attendance/shifts';
 import {
   deleteDailyStaffingTarget,
   getDailyStaffingTracking,
   upsertDailyStaffingTarget
 } from '@/features/hr/attendance/staffing-tracking';
-import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
+import { listShifts } from '@/features/hr/attendance/shifts';
 import { formatNumber, formatVND } from '@/lib/format';
+import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
 
 export const metadata = { title: 'HRM: Định biên & tracking ngày' };
 
@@ -155,7 +163,7 @@ export default async function StaffingTrackingPage(props: PageProps) {
           </div>
         </form>
 
-        <div className='grid gap-3 md:grid-cols-5'>
+        <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-5'>
           <SummaryCard
             title='Bộ phận theo dõi'
             value={formatNumber(tracking.summary.departmentsTracked)}
@@ -198,39 +206,45 @@ export default async function StaffingTrackingPage(props: PageProps) {
           </div>
 
           <div className='mt-4 overflow-x-auto'>
-            <table className='min-w-[1180px] w-full border-collapse text-sm'>
-              <thead className='bg-muted/40'>
-                <tr className='border-b text-left'>
-                  <th className='px-3 py-3 font-medium'>Ngày</th>
-                  <th className='px-3 py-3 font-medium'>Bộ phận</th>
-                  <th className='px-3 py-3 font-medium'>Ca</th>
-                  <th className='px-3 py-3 text-right font-medium'>Định biên</th>
-                  <th className='px-3 py-3 text-right font-medium'>Thực tế</th>
-                  <th className='px-3 py-3 text-right font-medium'>Chênh lệch</th>
-                  <th className='px-3 py-3 text-right font-medium'>Tỷ lệ đáp ứng</th>
-                  <th className='px-3 py-3 text-right font-medium'>Forecast lương</th>
-                  <th className='px-3 py-3 font-medium'>Cảnh báo</th>
-                  {canEdit ? <th className='px-3 py-3 text-right font-medium'>Thao tác</th> : null}
-                </tr>
-              </thead>
-              <tbody>
+            <Table className='min-w-[1280px]'>
+              <TableHeader className='bg-muted/40'>
+                <TableRow>
+                  <TableHead className='w-[120px]'>Ngày</TableHead>
+                  <TableHead className='w-[240px]'>Bộ phận</TableHead>
+                  <TableHead className='w-[180px]'>Ca</TableHead>
+                  <TableHead className='w-[96px] text-right'>Định biên</TableHead>
+                  <TableHead className='w-[108px] text-right'>Thực tế</TableHead>
+                  <TableHead className='w-[110px] text-right'>Chênh lệch</TableHead>
+                  <TableHead className='w-[128px] text-right'>Tỷ lệ đáp ứng</TableHead>
+                  <TableHead className='w-[164px] text-right'>Forecast lương</TableHead>
+                  <TableHead className='min-w-[320px]'>Cảnh báo</TableHead>
+                  {canEdit ? <TableHead className='w-[96px] text-right'>Thao tác</TableHead> : null}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {tracking.rows.length > 0 ? (
                   tracking.rows.map((row) => (
-                    <tr key={row.id} className='border-b align-top last:border-b-0'>
-                      <td className='px-3 py-3 font-medium'>{row.workDate}</td>
-                      <td className='px-3 py-3'>{row.departmentName}</td>
-                      <td className='px-3 py-3'>
+                    <TableRow key={row.id} className='align-top'>
+                      <TableCell className='font-medium whitespace-normal'>
+                        {row.workDate}
+                      </TableCell>
+                      <TableCell className='whitespace-normal'>
+                        <div className='max-w-[220px] text-sm leading-6'>{row.departmentName}</div>
+                      </TableCell>
+                      <TableCell className='whitespace-normal'>
                         <div className='font-medium'>{row.shiftCode}</div>
                         <div className='text-muted-foreground text-xs'>{row.shiftName}</div>
-                      </td>
-                      <td className='px-3 py-3 text-right'>{formatNumber(row.targetHeadcount)}</td>
-                      <td className='px-3 py-3 text-right'>
+                      </TableCell>
+                      <TableCell className='text-right'>
+                        {formatNumber(row.targetHeadcount)}
+                      </TableCell>
+                      <TableCell className='text-right'>
                         <div className='font-medium'>{formatNumber(row.actualHeadcount)}</div>
                         <div className='text-muted-foreground text-xs'>
                           {formatNumber(row.actualWorkdays)} công
                         </div>
-                      </td>
-                      <td className='px-3 py-3 text-right'>
+                      </TableCell>
+                      <TableCell className='text-right'>
                         <Badge
                           variant={
                             row.variance === 0
@@ -243,16 +257,22 @@ export default async function StaffingTrackingPage(props: PageProps) {
                           {row.variance > 0 ? '+' : ''}
                           {formatNumber(row.variance)}
                         </Badge>
-                      </td>
-                      <td className='px-3 py-3 text-right'>{formatNumber(row.coverageRate)}%</td>
-                      <td className='px-3 py-3 text-right font-semibold'>
+                      </TableCell>
+                      <TableCell className='text-right whitespace-nowrap'>
+                        {formatNumber(row.coverageRate)}%
+                      </TableCell>
+                      <TableCell className='text-right font-semibold whitespace-nowrap'>
                         {formatVND(row.estimatedPayrollCost)}
-                      </td>
-                      <td className='px-3 py-3'>
-                        <div className='flex flex-wrap gap-1'>
+                      </TableCell>
+                      <TableCell className='whitespace-normal'>
+                        <div className='flex max-w-[320px] flex-wrap gap-1'>
                           {row.warningFlags.length > 0 ? (
                             row.warningFlags.map((warning) => (
-                              <Badge key={warning} variant='outline' className='text-xs'>
+                              <Badge
+                                key={warning}
+                                variant='outline'
+                                className='text-xs whitespace-normal'
+                              >
                                 {warning}
                               </Badge>
                             ))
@@ -260,9 +280,9 @@ export default async function StaffingTrackingPage(props: PageProps) {
                             <span className='text-muted-foreground text-xs'>Không có cảnh báo</span>
                           )}
                         </div>
-                      </td>
+                      </TableCell>
                       {canEdit ? (
-                        <td className='px-3 py-3'>
+                        <TableCell>
                           <div className='flex justify-end gap-1'>
                             <EntityFormDialog
                               mode='edit'
@@ -317,23 +337,23 @@ export default async function StaffingTrackingPage(props: PageProps) {
                               />
                             ) : null}
                           </div>
-                        </td>
+                        </TableCell>
                       ) : null}
-                    </tr>
+                    </TableRow>
                   ))
                 ) : (
-                  <tr>
-                    <td
+                  <TableRow>
+                    <TableCell
                       colSpan={canEdit ? 10 : 9}
                       className='text-muted-foreground px-4 py-10 text-center'
                     >
                       Chưa có dữ liệu định biên hoặc công thực tế trong phạm vi lọc. Hãy khai báo
                       định biên hoặc kiểm tra lại dữ liệu chấm công.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       </div>
