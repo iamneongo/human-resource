@@ -91,12 +91,10 @@ export const navGroups: NavGroup[] = [
         url: '#',
         icon: 'workspace',
         isActive: false,
-        access: { role: 'admin' },
         items: [
           { title: 'Sơ đồ tổ chức', url: '/dashboard/org/chart' },
           { title: 'Phòng ban', url: '/dashboard/org/departments' },
-          { title: 'Chức vụ', url: '/dashboard/org/positions' },
-          { title: 'Liên kết tài khoản', url: '/dashboard/org/accounts' }
+          { title: 'Chức vụ', url: '/dashboard/org/positions' }
         ]
       },
       {

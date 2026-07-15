@@ -8,7 +8,6 @@ type BreadcrumbItem = {
   link: string;
 };
 
-/** Nhãn tiếng Việt cho từng segment đường dẫn. */
 const SEGMENT_LABELS: Record<string, string> = {
   dashboard: 'Trang chủ',
   overview: 'Bảng điều khiển',
@@ -16,7 +15,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   employees: 'Hồ sơ nhân viên',
   contracts: 'Hợp đồng lao động',
   assignments: 'Điều chuyển / Bổ nhiệm',
-  'salary-info': 'Lương & Phúc lợi',
+  'salary-info': 'Lương & phúc lợi',
   assets: 'Tài sản',
   rewards: 'Khen thưởng / Kỷ luật',
   offboarding: 'Thôi việc',
@@ -40,19 +39,12 @@ const SEGMENT_LABELS: Record<string, string> = {
   competencies: 'Khung năng lực',
   kpis: 'KPI / OKR',
   cycles: 'Chu kỳ đánh giá',
-  training: 'Đào tạo',
-  needs: 'Nhu cầu đào tạo',
-  plans: 'Kế hoạch đào tạo',
-  courses: 'Khóa học',
-  enrollments: 'Ghi danh',
-  progress: 'Theo dõi học tập',
-  budget: 'Ngân sách',
-  'career-paths': 'Lộ trình nghề nghiệp',
+  workspaces: 'Workspace',
+  team: 'Thành viên workspace',
   org: 'Cơ cấu tổ chức',
   chart: 'Sơ đồ tổ chức',
   departments: 'Phòng ban',
   positions: 'Chức vụ',
-  accounts: 'Liên kết tài khoản',
   profile: 'Hồ sơ cá nhân',
   notifications: 'Thông báo'
 };

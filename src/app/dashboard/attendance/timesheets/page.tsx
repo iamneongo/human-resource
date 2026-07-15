@@ -29,14 +29,35 @@ export default async function TimesheetsPage(props: PageProps) {
 
   const searchParams = await props.searchParams;
   const weekStartValue = searchParams?.weekStart;
+  const pageValue = searchParams?.page;
+  const perPageValue = searchParams?.perPage;
+  const searchValue = searchParams?.search;
   const weekStart =
     typeof weekStartValue === 'string'
       ? weekStartValue
       : Array.isArray(weekStartValue)
         ? weekStartValue[0]
         : undefined;
+  const page =
+    typeof pageValue === 'string'
+      ? Number(pageValue)
+      : Array.isArray(pageValue)
+        ? Number(pageValue[0])
+        : undefined;
+  const perPage =
+    typeof perPageValue === 'string'
+      ? Number(perPageValue)
+      : Array.isArray(perPageValue)
+        ? Number(perPageValue[0])
+        : undefined;
+  const search =
+    typeof searchValue === 'string'
+      ? searchValue
+      : Array.isArray(searchValue)
+        ? searchValue[0]
+        : undefined;
 
-  const boardData = await getAttendanceBoardData(weekStart);
+  const boardData = await getAttendanceBoardData({ weekStart, page, perPage, search });
   const canEdit = roleAtLeast(role, 'hr');
 
   return (

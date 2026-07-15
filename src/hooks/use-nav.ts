@@ -33,10 +33,8 @@ export function useFilteredNavItems(items: NavItem[]) {
   // Memoize context and permissions
   const accessContext = useMemo(() => {
     const permissions = membership?.permissions || [];
-    // HRM stores the role in the user's publicMetadata (single role model),
-    // falling back to the Clerk Organization role when present.
     const metaRole = user?.publicMetadata?.role as string | undefined;
-    const role = metaRole ?? membership?.role;
+    const role = organization ? 'admin' : (metaRole ?? membership?.role);
 
     return {
       organization: organization ?? undefined,
@@ -46,7 +44,13 @@ export function useFilteredNavItems(items: NavItem[]) {
       hasOrg: !!organization
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable primitives to avoid infinite re-renders from unstable Clerk object refs
-  }, [organization?.id, user?.id, user?.publicMetadata?.role, membership?.permissions, membership?.role]);
+  }, [
+    organization?.id,
+    user?.id,
+    user?.publicMetadata?.role,
+    membership?.permissions,
+    membership?.role
+  ]);
 
   // Filter items synchronously (all client-side)
   const filteredItems = useMemo(() => {
@@ -74,7 +78,7 @@ export function useFilteredNavItems(items: NavItem[]) {
 
         // Check role
         if (item.access.role) {
-          if (accessContext.role !== item.access.role) {
+          if (!accessContext.hasOrg && accessContext.role !== item.access.role) {
             return false;
           }
         }
@@ -124,7 +128,7 @@ export function useFilteredNavItems(items: NavItem[]) {
 
             // Check role
             if (childItem.access.role) {
-              if (accessContext.role !== childItem.access.role) {
+              if (!accessContext.hasOrg && accessContext.role !== childItem.access.role) {
                 return false;
               }
             }

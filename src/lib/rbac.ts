@@ -25,9 +25,9 @@ const ROLE_RANK: Record<HrmRole, number> = {
 
 /** Read the current user's HRM role from Clerk session claims / metadata. */
 export async function getCurrentRole(): Promise<HrmRole | null> {
-  const { sessionClaims } = await auth();
-  const claimRole = (sessionClaims?.metadata as { role?: string } | undefined)
-    ?.role;
+  const { orgId, sessionClaims } = await auth();
+  if (orgId) return 'admin';
+  const claimRole = (sessionClaims?.metadata as { role?: string } | undefined)?.role;
   if (claimRole && isHrmRole(claimRole)) return claimRole;
 
   // Fallback: publicMetadata (when session token isn't customized yet).
@@ -74,8 +74,9 @@ export async function hasRole(...allowed: HrmRole[]): Promise<boolean> {
  * Throws if the requirement is not met (caller may catch to redirect).
  */
 export async function requireRole(required: HrmRole): Promise<HrmRole> {
-  const { userId } = await auth();
+  const { orgId, userId } = await auth();
   if (!userId) throw new Error('UNAUTHENTICATED');
+  if (orgId) return 'admin';
   const role = await getCurrentRole();
   if (!roleAtLeast(role, required)) throw new Error('FORBIDDEN');
   return role as HrmRole;
