@@ -88,8 +88,11 @@ export async function getEmployeeDetail(id: string) {
 
 export type ActionResult<T = void> = { ok: true; data: T } | { ok: false; error: string };
 
-export async function listEmployees(search?: string) {
+export async function listEmployees(filters?: { search?: string; departmentId?: string }) {
   await requireRole('manager');
+
+  const search = filters?.search?.trim();
+  const departmentId = filters?.departmentId?.trim();
 
   const rows = await db
     .select({
@@ -100,6 +103,7 @@ export async function listEmployees(search?: string) {
       phone: employees.phone,
       status: employees.status,
       hireDate: employees.hireDate,
+      departmentId: employees.departmentId,
       departmentName: departments.name,
       positionTitle: positions.title
     })
@@ -107,9 +111,15 @@ export async function listEmployees(search?: string) {
     .leftJoin(departments, eq(employees.departmentId, departments.id))
     .leftJoin(positions, eq(employees.positionId, positions.id))
     .where(
-      search
-        ? or(ilike(employees.fullName, `%${search}%`), ilike(employees.employeeCode, `%${search}%`))
-        : undefined
+      and(
+        departmentId ? eq(employees.departmentId, departmentId) : undefined,
+        search
+          ? or(
+              ilike(employees.fullName, `%${search}%`),
+              ilike(employees.employeeCode, `%${search}%`)
+            )
+          : undefined
+      )
     )
     .orderBy(desc(employees.createdAt))
     .limit(2000);

@@ -75,7 +75,26 @@ export async function getOrgTree(): Promise<OrgNode[]> {
 /* ------------------------- Departments ------------------------- */
 export async function listDepartments() {
   await requireRole('manager');
-  return db.select().from(departments).orderBy(asc(departments.code)).limit(200);
+  return db
+    .select({
+      id: departments.id,
+      code: departments.code,
+      name: departments.name,
+      type: departments.type,
+      parentId: departments.parentId,
+      headcount: count(employees.id)
+    })
+    .from(departments)
+    .leftJoin(employees, eq(employees.departmentId, departments.id))
+    .groupBy(
+      departments.id,
+      departments.code,
+      departments.name,
+      departments.type,
+      departments.parentId
+    )
+    .orderBy(asc(departments.code))
+    .limit(200);
 }
 
 export async function createDepartment(v: Record<string, string>): Promise<Result> {

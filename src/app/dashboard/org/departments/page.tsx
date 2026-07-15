@@ -1,6 +1,9 @@
+import Link from 'next/link';
+
 import PageContainer from '@/components/layout/page-container';
-import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
+import { Badge } from '@/components/ui/badge';
 import { ConfirmDeleteDialog } from '@/features/hr/common/confirm-delete-dialog';
+import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
 import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
 import {
   createDepartment,
@@ -37,6 +40,14 @@ export default async function DepartmentsPage() {
   const deptCols: Column<Dept>[] = [
     { header: 'Mã', cell: (r) => r.code, className: 'font-medium' },
     { header: 'Tên phòng ban', cell: (r) => r.name },
+    {
+      header: 'Số nhân sự',
+      cell: (r) => (
+        <Link href={`/dashboard/hr/employees?departmentId=${r.id}`} className='inline-flex'>
+          <Badge variant='secondary'>{Number(r.headcount).toLocaleString('vi-VN')}</Badge>
+        </Link>
+      )
+    },
     {
       header: '',
       cell: (r) => (

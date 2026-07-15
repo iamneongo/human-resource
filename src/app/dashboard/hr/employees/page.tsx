@@ -1,11 +1,15 @@
 import Link from 'next/link';
 
+import type { SearchParams } from 'nuqs/server';
+
+import { Icons } from '@/components/icons';
 import PageContainer from '@/components/layout/page-container';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
-import { Icons } from '@/components/icons';
-import { listEmployees } from '@/features/hr/employees/actions';
+import { Label } from '@/components/ui/label';
+import { departmentOptions } from '@/features/hr/common/lookups';
 import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
+import { listEmployees } from '@/features/hr/employees/actions';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
 import { cn } from '@/lib/utils';
 
@@ -25,7 +29,15 @@ export const metadata = {
   title: 'HRM: Hồ sơ nhân viên'
 };
 
-export default async function EmployeesPage() {
+type PageProps = {
+  searchParams: Promise<SearchParams>;
+};
+
+function getQueryValue(value: string | string[] | undefined) {
+  return typeof value === 'string' ? value : Array.isArray(value) ? value[0] : '';
+}
+
+export default async function EmployeesPage(props: PageProps) {
   const role = await getCurrentRole();
   const canView = roleAtLeast(role, 'manager');
 
@@ -45,7 +57,13 @@ export default async function EmployeesPage() {
     );
   }
 
-  const rows = await listEmployees();
+  const searchParams = await props.searchParams;
+  const departmentId = getQueryValue(searchParams.departmentId);
+
+  const [rows, departments] = await Promise.all([
+    listEmployees({ departmentId }),
+    departmentOptions()
+  ]);
   const canCreate = roleAtLeast(role, 'hr');
 
   const columns: Column<Row>[] = [
@@ -77,7 +95,6 @@ export default async function EmployeesPage() {
   return (
     <PageContainer
       pageTitle='Hồ sơ nhân viên'
-      pageDescription='Danh sách nhân sự đang được quản lý trong hệ thống. Mỗi hồ sơ là điểm vào để xem hợp đồng, lương, tài sản và lịch sử điều chuyển.'
       pageHeaderAction={
         canCreate ? (
           <Link
@@ -89,11 +106,43 @@ export default async function EmployeesPage() {
         ) : undefined
       }
     >
-      <SimpleTable
-        columns={columns}
-        rows={rows}
-        emptyText='Chưa có nhân viên nào. Hãy thêm hồ sơ nhân viên đầu tiên để bắt đầu quản lý dữ liệu HR.'
-      />
+      <div className='space-y-4'>
+        <form className='grid gap-3 rounded-2xl border bg-card p-4 md:grid-cols-[minmax(260px,360px)_auto] md:items-end'>
+          <div className='space-y-1.5'>
+            <Label htmlFor='departmentId'>Lọc theo phòng ban</Label>
+            <select
+              id='departmentId'
+              name='departmentId'
+              defaultValue={departmentId}
+              className='border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none'
+            >
+              <option value=''>Tất cả phòng ban</option>
+              {departments.map((department) => (
+                <option key={department.value} value={department.value}>
+                  {department.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className='flex gap-2'>
+            <button type='submit' className={cn(buttonVariants())}>
+              Xem danh sách
+            </button>
+            <Link
+              href='/dashboard/hr/employees'
+              className={cn(buttonVariants({ variant: 'outline' }))}
+            >
+              Bỏ lọc
+            </Link>
+          </div>
+        </form>
+
+        <SimpleTable
+          columns={columns}
+          rows={rows}
+          emptyText='Chưa có nhân viên nào theo bộ lọc hiện tại.'
+        />
+      </div>
     </PageContainer>
   );
 }
