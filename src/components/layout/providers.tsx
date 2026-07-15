@@ -1,6 +1,4 @@
 'use client';
-import { ClerkProvider } from '@clerk/nextjs';
-import { viVN } from '@clerk/localizations';
 import React from 'react';
 import { ActiveThemeProvider } from '../themes/active-theme';
 import QueryProvider from './query-provider';
@@ -12,32 +10,10 @@ export default function Providers({
   activeThemeValue: string;
   children: React.ReactNode;
 }) {
-  const clerkLocalization = viVN as React.ComponentProps<typeof ClerkProvider>['localization'];
-
   return (
     <>
       <ActiveThemeProvider initialTheme={activeThemeValue}>
-        <ClerkProvider
-          localization={clerkLocalization}
-          appearance={{
-            variables: {
-              colorPrimary: 'var(--primary)',
-              colorPrimaryForeground: 'var(--primary-foreground)',
-              colorDanger: 'var(--destructive)',
-              colorBackground: 'var(--card)',
-              colorForeground: 'var(--foreground)',
-              colorMuted: 'var(--muted)',
-              colorMutedForeground: 'var(--muted-foreground)',
-              colorInput: 'var(--input)',
-              colorInputForeground: 'var(--foreground)',
-              colorBorder: 'var(--border)',
-              colorRing: 'var(--ring)',
-              fontFamily: 'var(--font-sans)'
-            }
-          }}
-        >
-          <QueryProvider>{children}</QueryProvider>
-        </ClerkProvider>
+        <QueryProvider>{children}</QueryProvider>
       </ActiveThemeProvider>
     </>
   );

@@ -48,7 +48,7 @@ export function ContractUploadDialog({
     maxSize: MAX_BYTES,
     onDrop: (accepted, rejected) => {
       if (rejected[0]?.errors?.length) {
-        toast.error('Chi nhan PDF, DOC, DOCX toi da 8MB.');
+        toast.error('Chỉ nhận PDF, DOC, DOCX tối đa 8MB.');
       }
 
       setFile(accepted[0] ?? null);
@@ -67,21 +67,21 @@ export function ContractUploadDialog({
       const json = await res.json();
 
       if (!res.ok || !json.fileId) {
-        toast.error(json.error ?? 'Upload that bai.');
+        toast.error(json.error ?? 'Upload thất bại.');
         return;
       }
 
       const result = await attachContractFile(contractId, json.fileId);
       if (!result.ok || !result.data?.fileUrl) {
-        toast.error(result.ok ? 'Khong lay duoc duong dan file.' : result.error);
+        toast.error(result.ok ? 'Không lấy được đường dẫn file.' : result.error);
         return;
       }
 
-      toast.success('Da dinh kem tai lieu hop dong.');
+      toast.success('Đã đính kèm tài liệu hợp đồng.');
       onUploaded(result.data.fileUrl);
       onClose();
     } catch {
-      toast.error('Loi ket noi.');
+      toast.error('Lỗi kết nối.');
     } finally {
       setPending(false);
     }
@@ -96,11 +96,11 @@ export function ContractUploadDialog({
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleClose()}>
       <DialogContent className='sm:max-w-md'>
         <DialogHeader>
-          <DialogTitle>Dinh kem tai lieu hop dong</DialogTitle>
+          <DialogTitle>Đính kèm tài liệu hợp đồng</DialogTitle>
         </DialogHeader>
 
         <p className='text-muted-foreground -mt-1 text-sm'>
-          Buoc 2: tai file cho hop dong{' '}
+          Bước 2: tải file cho hợp đồng{' '}
           <strong className='text-foreground'>{contractNumber}</strong>.
         </p>
 
@@ -136,20 +136,20 @@ export function ContractUploadDialog({
             <div className='flex flex-col items-center gap-2'>
               <Icons.upload className='text-muted-foreground size-10' />
               <p className='text-sm font-medium'>
-                {isDragActive ? 'Tha file vao day' : 'Keo tha hoac click de chon file'}
+                {isDragActive ? 'Thả file vào đây' : 'Kéo thả hoặc click để chọn file'}
               </p>
-              <p className='text-muted-foreground text-xs'>PDF, DOC, DOCX toi da 8MB</p>
+              <p className='text-muted-foreground text-xs'>PDF, DOC, DOCX tối đa 8MB</p>
             </div>
           )}
         </div>
 
         <div className='flex justify-end gap-2'>
           <Button variant='outline' onClick={handleClose} disabled={pending}>
-            De sau
+            Để sau
           </Button>
           <Button onClick={handleUpload} disabled={!file || pending}>
             {pending && <Icons.spinner className='mr-2 size-4 animate-spin' />}
-            {pending ? 'Dang upload...' : 'Dinh kem ngay'}
+            {pending ? 'Đang upload...' : 'Đính kèm ngay'}
           </Button>
         </div>
       </DialogContent>

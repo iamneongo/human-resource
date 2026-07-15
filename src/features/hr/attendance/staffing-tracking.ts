@@ -1,6 +1,5 @@
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { and, asc, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 
@@ -16,6 +15,7 @@ import {
   shifts,
   timesheets
 } from '@/db/schema';
+import { requireAuthUserId } from '@/lib/auth';
 import { requireRole } from '@/lib/rbac';
 
 type Result = { ok: true } | { ok: false; error: string };
@@ -529,7 +529,7 @@ export async function upsertDailyStaffingTarget(input: Record<string, string>): 
     return { ok: false, error: 'Chỉ HR/Admin mới được cập nhật định biên ngày.' };
   }
 
-  const { userId } = await auth();
+  const userId = await requireAuthUserId().catch(() => null);
   if (!userId) return { ok: false, error: 'Bạn cần đăng nhập.' };
 
   const targetHeadcount = Number(input.targetHeadcount);

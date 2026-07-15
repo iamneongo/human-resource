@@ -1,85 +1,70 @@
-# human-resource — Hệ thống Quản lý Nhân sự (HRM)
+# human-resource - Hệ thống Quản lý Nhân sự (HRM)
 
-Hệ thống HRM đầy đủ 5 phân hệ (HR-01…HR-05) xây trên **Next.js 16 (App Router) · React 19 · Clerk · Drizzle ORM · PostgreSQL (Neon) · shadcn/ui**, chạy bằng **bun**.
+Hệ thống HRM cho nhân sự, chấm công và tiền lương xây trên **Next.js 16 · React 19 · Better Auth · Resend · Drizzle ORM · PostgreSQL · shadcn/ui**, chạy bằng **bun**.
 
-## Phân hệ
-
-| Mã | Phân hệ | Chức năng chính |
-|----|---------|-----------------|
-| HR-01 | Quản lý Nhân sự | Hồ sơ, hợp đồng (cảnh báo hết hạn), điều chuyển, lương & phúc lợi, tài sản, khen thưởng/kỷ luật, offboarding, báo cáo |
-| HR-02 | Chấm công | Ca làm việc, thiết bị, timesheet, OT (tự tính hệ số), nghỉ phép (duyệt + trừ số dư), số dư phép theo thâm niên, xử lý bất thường |
-| HR-03 | Tính lương | Thang bảng lương, công thức, BHXH & thuế TNCN lũy tiến, biến động lương, **engine chốt lương**, phiếu lương, báo cáo |
-| HR-04 | Hiệu suất | JD, khung năng lực, KPI/OKR, chu kỳ đánh giá 360°, báo cáo bell-curve |
-| HR-05 | Đào tạo (L&D) | TNA, kế hoạch, khóa học, ghi danh, theo dõi học tập, ngân sách, lộ trình nghề nghiệp |
-
-## Phân quyền (RBAC)
-
-Một role lưu trong Clerk `publicMetadata.role`, enforce server-side (`src/lib/rbac.ts`):
-
-- **admin** — toàn quyền + cấu hình cơ cấu tổ chức, duyệt bảng lương
-- **hr** — nghiệp vụ nhân sự/lương/chấm công toàn công ty
-- **manager** — duyệt phép/OT, xem dữ liệu
-- **employee** — self-service (tự đăng ký OT/nghỉ phép, xem của bản thân)
-
-## Cài đặt & chạy
+## Cài đặt
 
 ```bash
-# 1. Cài dependencies
 bun install
-
-# 2. Tạo file .env từ mẫu và điền khóa Clerk + DATABASE_URL
 cp .env.example .env
-
-# 3. Tạo schema trên database
-bun run db:push
-
-# 4. (Tuỳ chọn) Seed dữ liệu mẫu (3 phòng ban + 3 nhân viên)
-bun run db:seed
-
-# 5. Chạy
-bun run dev            # http://localhost:3000
+bun run db:migrate
+bun run dev
 ```
 
-## Khởi tạo tài khoản đầu tiên
+Các biến môi trường tối thiểu:
 
-1. Truy cập app → **Đăng ký** tài khoản qua giao diện.
-2. Cấp quyền admin:
-   ```bash
-   bun run scripts/set-role.ts <email-của-bạn> admin
-   ```
-3. Đăng nhập lại → menu 5 phân hệ hiển thị đầy đủ.
+```env
+BETTER_AUTH_SECRET=change-me
+BETTER_AUTH_URL="http://localhost:3000"
+AUTH_FROM_EMAIL="HRM <onboarding@resend.dev>"
+RESEND_API_KEY=
+DATABASE_URL="postgresql://user:password@host/db?sslmode=require"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
 
-### Bật self-service cho nhân viên
-Vào **Hệ thống → Cơ cấu tổ chức → Liên kết tài khoản**: gán email tài khoản đăng nhập cho hồ sơ nhân viên. Sau đó nhân viên (role `employee`) mới tự đăng ký OT/nghỉ phép và xem dữ liệu của mình.
+Nếu chưa cấu hình `RESEND_API_KEY`, mã OTP sẽ được log ra console để test local.
 
-## Luồng tính lương (demo)
+## Đăng nhập và phân quyền
 
-1. **HR-03 → BHXH & Thuế** → thêm 1 cấu hình (mặc định chuẩn VN).
-2. **HR-03 → Chốt bảng lương** → tạo kỳ `YYYY-MM` → **Tính & chốt** (engine sinh phiếu lương).
-3. **Admin** duyệt bảng lương → xem **Phiếu lương** / **Báo cáo lương**.
+- Đăng nhập dùng **email OTP** qua Better Auth.
+- Lần đăng nhập đầu tiên sẽ tự tạo tài khoản nội bộ.
+- Role hệ thống lưu trực tiếp trong bảng `user.role`.
+
+Gán role cho tài khoản:
+
+```bash
+bun run scripts/set-role.ts hr@congty.com admin
+```
+
+Roles hợp lệ:
+
+- `admin`
+- `hr`
+- `manager`
+- `employee`
+
+## Migration đã thêm
+
+Migration mới: [src/db/migrations/0004_mushy_sebastian_shaw.sql](/C:/CongViec/nhansu/src/db/migrations/0004_mushy_sebastian_shaw.sql)
+
+Nội dung chính:
+
+- Tạo bảng `user`, `session`, `account`, `verification` cho Better Auth
+- Thêm cột `employees.auth_user_id`
+- Giữ `employees.clerk_user_id` ở trạng thái legacy để tránh mất dữ liệu cũ
 
 ## Scripts
 
-| Lệnh | Mô tả |
-|------|-------|
-| `bun run dev` | Chạy dev server |
-| `bun run build` | Build production |
-| `bun run db:generate` | Sinh migration từ schema |
-| `bun run db:push` | Đẩy schema lên DB |
-| `bun run db:seed` | Seed dữ liệu mẫu |
-| `bun run scripts/set-role.ts <email> <role>` | Gán role cho tài khoản |
+```bash
+bun run dev
+bun run build
+bun run db:generate
+bun run db:migrate
+bun run db:push
+bun run db:seed
+```
 
-## CI/CD
+## Ghi chú
 
-- Workflow GitHub Actions: [.github/workflows/deploy.yml](./.github/workflows/deploy.yml)
-- Tài liệu cấu hình Dokploy: [docs/dokploy-cicd.md](./docs/dokploy-cicd.md)
-
-Pipeline hiện tại build image trên GitHub, push lên `GHCR`, rồi gọi Dokploy API để redeploy application đang chạy.
-
-## Kiến trúc
-
-- `src/db/schema/` — Drizzle schema (1 file/phân hệ + `_shared`)
-- `src/features/hr/` — logic từng phân hệ (server actions + components)
-- `src/features/hr/common/` — primitive tái dùng: `EntityFormDialog`, `SimpleTable`, `ApprovalActions`, `lookups`
-- `src/features/hr/payroll/calc.ts` — engine tính lương thuần (thuế lũy tiến + BHXH có trần)
-- `src/lib/rbac.ts` — phân quyền
+- Route `/dashboard/workspaces/team` hiện đã tách khỏi embedded UI của Clerk và đang chạy theo mô hình workspace nội bộ.
+- Billing theo organization của Clerk đã được gỡ; nếu cần thu phí theo workspace, nên nối cổng thanh toán riêng ở bước tiếp theo.

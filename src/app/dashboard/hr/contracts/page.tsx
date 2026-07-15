@@ -9,10 +9,12 @@ import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
 import {
   createContract,
   deleteContract,
+  getContractOverview,
   listContracts,
   updateContract
 } from '@/features/hr/contracts/actions';
 import { ContractFileCell } from '@/features/hr/contracts/contract-file-cell';
+import { ContractQuickActions } from '@/features/hr/contracts/contract-quick-actions';
 import { CreateContractFlowDialog } from '@/features/hr/contracts/create-contract-flow-dialog';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
 import { formatVND } from '@/lib/format';
@@ -30,6 +32,17 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 type Row = Awaited<ReturnType<typeof listContracts>>[number];
+
+function getLifecycleStatus(row: Row) {
+  if (row.status === 'terminated') return { label: 'Chấm dứt', variant: 'destructive' as const };
+  if (!row.endDate) return { label: 'Đang hiệu lực', variant: 'default' as const };
+
+  const days = differenceInCalendarDays(parseISO(row.endDate), new Date());
+  if (days < 0) return { label: 'Đã hết hạn', variant: 'destructive' as const };
+  if (days <= 15) return { label: 'Cần tái ký', variant: 'destructive' as const };
+  if (days <= 45) return { label: 'Sắp hết hạn', variant: 'outline' as const };
+  return { label: 'Đang hiệu lực', variant: 'default' as const };
+}
 
 export default async function ContractsPage() {
   const role = await getCurrentRole();
@@ -50,35 +63,57 @@ export default async function ContractsPage() {
     );
   }
 
-  const rows = await listContracts();
+  const [rows, overview] = await Promise.all([listContracts(), getContractOverview()]);
   const canCreate = roleAtLeast(role, 'hr');
   const employeeSelectOptions = canCreate ? await employeeOptions() : [];
 
   const columns: Column<Row>[] = [
     { header: 'Số hợp đồng', cell: (row) => row.contractNumber, className: 'font-medium' },
     {
-      header: 'Nhân viên',
+      header: 'Nhân sự',
       cell: (row) => `${row.employeeCode ?? ''} ${row.employeeName ?? ''}`.trim()
     },
     { header: 'Loại hợp đồng', cell: (row) => TYPE_LABEL[row.type] ?? row.type },
     { header: 'Bắt đầu', cell: (row) => row.startDate },
-    { header: 'Kết thúc', cell: (row) => renderExpiry(row.endDate) },
+    { header: 'Kết thúc', cell: (row) => row.endDate ?? 'Không thời hạn' },
     { header: 'Lương cơ bản', cell: (row) => formatVND(row.baseSalary) },
+    {
+      header: 'Hiệu lực',
+      cell: (row) => {
+        const meta = getLifecycleStatus(row);
+        return <Badge variant={meta.variant}>{meta.label}</Badge>;
+      }
+    },
     {
       header: 'Tài liệu',
       cell: (row) => (
-        <ContractFileCell
-          contractId={row.id}
-          contractNumber={row.contractNumber}
-          fileUrl={row.fileUrl ?? null}
-          fileName={row.fileName ?? null}
-          fileMimeType={row.fileMimeType ?? null}
-          canUpload={canCreate}
-        />
+        <div className='flex min-w-[180px] flex-col gap-1'>
+          <ContractFileCell
+            contractId={row.id}
+            contractNumber={row.contractNumber}
+            fileUrl={row.fileUrl ?? null}
+            fileName={row.fileName ?? null}
+            fileMimeType={row.fileMimeType ?? null}
+            canUpload={canCreate}
+          />
+          {!row.fileUrl ? (
+            <Badge variant='destructive' className='w-fit'>
+              Chưa đính file
+            </Badge>
+          ) : null}
+        </div>
       )
+    },
+    {
+      header: 'Trạng thái ký',
+      cell: () => <Badge variant='outline'>Chưa tích hợp ký số</Badge>
     },
     ...(canCreate
       ? [
+          {
+            header: 'Thao tác nhanh',
+            cell: (row: Row) => <ContractQuickActions contractId={row.id} />
+          },
           {
             header: '',
             cell: (row: Row) => (
@@ -147,7 +182,6 @@ export default async function ContractsPage() {
   return (
     <PageContainer
       pageTitle='Hợp đồng lao động'
-      pageDescription='Lưu thông tin hợp đồng trước, sau đó tiếp tục đính kèm file để hoàn tất hồ sơ pháp lý. Cách này giúp người dùng không bị lạc flow khi nhập mới.'
       pageHeaderAction={
         canCreate ? (
           <CreateContractFlowDialog
@@ -157,7 +191,7 @@ export default async function ContractsPage() {
             fields={[
               {
                 name: 'employeeId',
-                label: 'Nhân viên',
+                label: 'Nhân sự',
                 type: 'select',
                 options: employeeSelectOptions,
                 required: true,
@@ -184,29 +218,59 @@ export default async function ContractsPage() {
         ) : undefined
       }
     >
-      <SimpleTable
-        columns={columns}
-        rows={rows}
-        emptyText='Chưa có hợp đồng nào. Hãy thêm hợp đồng đầu tiên để bắt đầu quản lý hồ sơ lao động.'
-      />
+      <div className='space-y-4'>
+        <div className='grid gap-3 md:grid-cols-5'>
+          <SummaryCard
+            label='Tổng hợp đồng'
+            value={overview.totalContracts}
+            helper='Toàn bộ hồ sơ đang quản lý'
+          />
+          <SummaryCard
+            label='Đang hiệu lực'
+            value={overview.activeContracts}
+            helper='Có thể dùng để chạy demo lifecycle'
+          />
+          <SummaryCard
+            label='Chưa đính file'
+            value={overview.missingFiles}
+            helper='Cần xử lý bước upload tài liệu'
+          />
+          <SummaryCard
+            label='Sắp hết hạn 30 ngày'
+            value={overview.expiring30}
+            helper='Case cảnh báo gấp'
+          />
+          <SummaryCard
+            label='Sắp hết hạn 60/90 ngày'
+            value={`${overview.expiring60}/${overview.expiring90}`}
+            helper='Theo dõi gia hạn và tái ký'
+          />
+        </div>
+
+        <SimpleTable
+          columns={columns}
+          rows={rows}
+          emptyText='Chưa có hợp đồng nào. Hãy thêm hợp đồng đầu tiên để bắt đầu quản lý hồ sơ lao động.'
+        />
+      </div>
     </PageContainer>
   );
 }
 
-function renderExpiry(endDate: string | null) {
-  if (!endDate) return <span className='text-muted-foreground'>Không thời hạn</span>;
-
-  const days = differenceInCalendarDays(parseISO(endDate), new Date());
-
-  if (days < 0) return <Badge variant='destructive'>Hết hạn ({endDate})</Badge>;
-
-  if (days <= 30) {
-    return (
-      <Badge variant='secondary'>
-        Sắp hết hạn: {endDate} ({days} ngày)
-      </Badge>
-    );
-  }
-
-  return <span>{endDate}</span>;
+function SummaryCard({
+  label,
+  value,
+  helper
+}: {
+  label: string;
+  value: string | number;
+  helper: string;
+}) {
+  return (
+    <div className='rounded-xl border bg-card p-4'>
+      <div className='text-muted-foreground text-xs uppercase tracking-wide'>{label}</div>
+      <div className='mt-2 text-2xl font-semibold'>{value}</div>
+      <div className='text-muted-foreground mt-1 text-sm'>{helper}</div>
+    </div>
+  );
 }

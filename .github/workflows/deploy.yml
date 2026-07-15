@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - codex/hr-secure-attendance-payroll
   workflow_dispatch:
     inputs:
       deploy:
@@ -20,10 +19,50 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  NODE_VERSION: '22'
 
 jobs:
-  docker:
+  verify:
+    name: Verify app build on GitHub
     runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build Next.js application
+        env:
+          CI: true
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_SENTRY_DISABLED: ${{ secrets.NEXT_PUBLIC_SENTRY_DISABLED }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+          NEXT_PUBLIC_SENTRY_ORG: ${{ secrets.NEXT_PUBLIC_SENTRY_ORG }}
+          NEXT_PUBLIC_SENTRY_PROJECT: ${{ secrets.NEXT_PUBLIC_SENTRY_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          AUTH_FROM_EMAIL: ${{ secrets.AUTH_FROM_EMAIL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: bun run build
+
+  docker:
+    name: Build and push container image
+    runs-on: ubuntu-latest
+    needs: verify
     permissions:
       contents: read
       packages: write
@@ -63,24 +102,40 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-            NEXT_PUBLIC_CLERK_SIGN_IN_URL=${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }}
-            NEXT_PUBLIC_CLERK_SIGN_UP_URL=${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }}
-            NEXT_PUBLIC_SENTRY_DISABLED=${{ secrets.NEXT_PUBLIC_SENTRY_DISABLED }}
+            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
+            BETTER_AUTH_URL=${{ secrets.BETTER_AUTH_URL }}
+            BETTER_AUTH_SECRET=${{ secrets.BETTER_AUTH_SECRET }}
+            NEXT_PUBLIC_SENTRY_DISABLED=${{ secrets.NEXT_PUBLIC_SENTRY_DISABLED }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+            NEXT_PUBLIC_SENTRY_ORG=${{ secrets.NEXT_PUBLIC_SENTRY_ORG }}
+            NEXT_PUBLIC_SENTRY_PROJECT=${{ secrets.NEXT_PUBLIC_SENTRY_PROJECT }}
+            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
 
-      - name: Trigger Dokploy redeploy
-        if: github.event_name == 'push' || inputs.deploy == true
+  deploy:
+    name: Trigger Dokploy redeploy
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.event_name == 'push' || inputs.deploy == true
+
+    steps:
+      - name: Validate Dokploy secrets
         env:
           DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
           DOKPLOY_APPLICATION_ID: ${{ secrets.DOKPLOY_APPLICATION_ID }}
         run: |
           if [ -z "${DOKPLOY_URL}" ] || [ -z "${DOKPLOY_API_KEY}" ] || [ -z "${DOKPLOY_APPLICATION_ID}" ]; then
-            echo "Dokploy secrets are not configured; skipping redeploy."
-            exit 0
+            echo "Missing DOKPLOY_URL, DOKPLOY_API_KEY, or DOKPLOY_APPLICATION_ID."
+            exit 1
           fi
 
+      - name: Trigger Dokploy redeploy
+        env:
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_APPLICATION_ID: ${{ secrets.DOKPLOY_APPLICATION_ID }}
+        run: |
           curl --fail --show-error --silent \
             -X POST "${DOKPLOY_URL%/}/api/application.redeploy" \
             -H "Content-Type: application/json" \

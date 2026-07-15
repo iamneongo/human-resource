@@ -1,11 +1,11 @@
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { desc, eq } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { contracts, employees, files } from '@/db/schema';
+import { requireAuthUserId } from '@/lib/auth';
 import { requireRole } from '@/lib/rbac';
 
 type Result<T = void> = { ok: true; data?: T } | { ok: false; error: string };
@@ -61,6 +61,32 @@ export async function listContracts() {
   }));
 }
 
+export async function getContractOverview() {
+  const rows = await listContracts();
+  const now = new Date();
+
+  return {
+    totalContracts: rows.length,
+    activeContracts: rows.filter((row) => row.status === 'active').length,
+    missingFiles: rows.filter((row) => !row.fileUrl).length,
+    expiring30: rows.filter((row) => {
+      if (!row.endDate || row.status !== 'active') return false;
+      const daysLeft = Math.ceil((new Date(row.endDate).getTime() - now.getTime()) / 86_400_000);
+      return daysLeft >= 0 && daysLeft <= 30;
+    }).length,
+    expiring60: rows.filter((row) => {
+      if (!row.endDate || row.status !== 'active') return false;
+      const daysLeft = Math.ceil((new Date(row.endDate).getTime() - now.getTime()) / 86_400_000);
+      return daysLeft >= 0 && daysLeft <= 60;
+    }).length,
+    expiring90: rows.filter((row) => {
+      if (!row.endDate || row.status !== 'active') return false;
+      const daysLeft = Math.ceil((new Date(row.endDate).getTime() - now.getTime()) / 86_400_000);
+      return daysLeft >= 0 && daysLeft <= 90;
+    }).length
+  };
+}
+
 export async function attachContractFile(
   contractId: string,
   fileId: string
@@ -71,7 +97,7 @@ export async function attachContractFile(
     return { ok: false, error: 'Không có quyền.' };
   }
 
-  const { userId } = await auth();
+  const userId = await requireAuthUserId().catch(() => null);
   if (!userId) return { ok: false, error: 'Bạn cần đăng nhập.' };
 
   try {
@@ -174,6 +200,78 @@ export async function deleteContract(id: string): Promise<Result> {
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
   }
+}
+
+async function duplicateContractVariant(
+  id: string,
+  options: {
+    mode: 'renew' | 'reissue' | 'appendix';
+    nextStartDate?: string | null;
+    nextEndDate?: string | null;
+  }
+): Promise<Result> {
+  try {
+    await requireRole('hr');
+  } catch {
+    return { ok: false, error: 'Không có quyền.' };
+  }
+
+  try {
+    const [existing] = await db.select().from(contracts).where(eq(contracts.id, id)).limit(1);
+    if (!existing) return { ok: false, error: 'Không tìm thấy hợp đồng.' };
+
+    const suffix = options.mode === 'renew' ? 'GH' : options.mode === 'reissue' ? 'TK' : 'PL';
+    const now = new Date();
+    const defaultStartDate =
+      options.nextStartDate ||
+      existing.endDate ||
+      existing.startDate ||
+      now.toISOString().slice(0, 10);
+    const defaultEndDate =
+      options.nextEndDate ||
+      (existing.endDate
+        ? new Date(new Date(existing.endDate).setMonth(new Date(existing.endDate).getMonth() + 12))
+            .toISOString()
+            .slice(0, 10)
+        : null);
+
+    await db.insert(contracts).values({
+      employeeId: existing.employeeId,
+      contractNumber: `${existing.contractNumber}-${suffix}`,
+      type: existing.type,
+      startDate: defaultStartDate,
+      endDate: options.mode === 'appendix' ? existing.endDate : defaultEndDate,
+      baseSalary: existing.baseSalary,
+      status: 'active',
+      signNumber:
+        options.mode === 'appendix' ? `PL-${existing.contractNumber}` : existing.signNumber,
+      signDate: now.toISOString().slice(0, 10)
+    });
+
+    revalidateContractViews(existing.employeeId);
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'Không thể tạo biến thể hợp đồng.'
+    };
+  }
+}
+
+export async function renewContract(id: string): Promise<Result> {
+  return duplicateContractVariant(id, { mode: 'renew' });
+}
+
+export async function reissueContract(id: string): Promise<Result> {
+  return duplicateContractVariant(id, { mode: 'reissue' });
+}
+
+export async function createContractAppendix(id: string): Promise<Result> {
+  return duplicateContractVariant(id, { mode: 'appendix' });
+}
+
+export async function terminateContract(id: string): Promise<Result> {
+  return deleteContract(id);
 }
 
 export async function createContract(

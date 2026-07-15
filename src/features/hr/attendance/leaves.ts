@@ -1,32 +1,76 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { employees, leaveBalances, leaveRequests } from '@/db/schema';
+import { departments, employees, leaveBalances, leaveRequests } from '@/db/schema';
 import { getCurrentEmployeeId, requireRole } from '@/lib/rbac';
 
 type Result = { ok: true } | { ok: false; error: string };
+const LEAVE_STATUSES = ['draft', 'pending', 'approved', 'rejected', 'cancelled'] as const;
 
-export async function listLeaves(onlyEmployeeId?: string) {
+export async function listLeaves(filters?: {
+  onlyEmployeeId?: string;
+  employeeId?: string;
+  departmentId?: string;
+  type?: string;
+  status?: string;
+  search?: string;
+}) {
   await requireRole('employee');
+
+  const currentYear = new Date().getFullYear();
   return db
     .select({
       id: leaveRequests.id,
+      employeeId: leaveRequests.employeeId,
       type: leaveRequests.type,
       startDate: leaveRequests.startDate,
       endDate: leaveRequests.endDate,
       days: leaveRequests.days,
       reason: leaveRequests.reason,
       status: leaveRequests.status,
-      employeeName: employees.fullName
+      employeeName: employees.fullName,
+      employeeCode: employees.employeeCode,
+      departmentName: departments.name,
+      entitledDays: leaveBalances.entitledDays,
+      usedDays: leaveBalances.usedDays,
+      remainingDays: sql<string>`coalesce(${leaveBalances.entitledDays}, 0) - coalesce(${leaveBalances.usedDays}, 0)`
     })
     .from(leaveRequests)
     .leftJoin(employees, eq(leaveRequests.employeeId, employees.id))
-    .where(onlyEmployeeId ? eq(leaveRequests.employeeId, onlyEmployeeId) : undefined)
+    .leftJoin(departments, eq(employees.departmentId, departments.id))
+    .leftJoin(
+      leaveBalances,
+      and(
+        eq(leaveBalances.employeeId, leaveRequests.employeeId),
+        eq(leaveBalances.year, currentYear)
+      )
+    )
+    .where(
+      and(
+        filters?.onlyEmployeeId ? eq(leaveRequests.employeeId, filters.onlyEmployeeId) : undefined,
+        filters?.employeeId ? eq(leaveRequests.employeeId, filters.employeeId) : undefined,
+        filters?.departmentId ? eq(employees.departmentId, filters.departmentId) : undefined,
+        filters?.type && TYPES.includes(filters.type as (typeof TYPES)[number])
+          ? eq(leaveRequests.type, filters.type as (typeof TYPES)[number])
+          : undefined,
+        filters?.status &&
+          LEAVE_STATUSES.includes(filters.status as (typeof LEAVE_STATUSES)[number])
+          ? eq(leaveRequests.status, filters.status as (typeof LEAVE_STATUSES)[number])
+          : undefined,
+        filters?.search
+          ? or(
+              ilike(employees.fullName, `%${filters.search}%`),
+              ilike(employees.employeeCode, `%${filters.search}%`),
+              ilike(departments.name, `%${filters.search}%`)
+            )
+          : undefined
+      )
+    )
     .orderBy(desc(leaveRequests.startDate))
-    .limit(200);
+    .limit(300);
 }
 
 const TYPES = ['annual', 'sick', 'maternity', 'unpaid', 'other'] as const;
@@ -34,18 +78,16 @@ const TYPES = ['annual', 'sick', 'maternity', 'unpaid', 'other'] as const;
 export async function createLeave(v: Record<string, string>): Promise<Result> {
   await requireRole('employee');
   const employeeId = v.employeeId || (await getCurrentEmployeeId());
-  if (!employeeId) return { ok: false, error: 'Không xác định được nhân viên.' };
+  if (!employeeId) return { ok: false, error: 'Không xác định được nhân sự.' };
   if (!v.type || !v.startDate || !v.endDate)
     return { ok: false, error: 'Thiếu thông tin bắt buộc.' };
   const type = TYPES.includes(v.type as (typeof TYPES)[number])
     ? (v.type as (typeof TYPES)[number])
     : 'annual';
 
-  // Số ngày nghỉ = số ngày lịch (bao gồm 2 đầu mút).
   const start = new Date(v.startDate);
   const end = new Date(v.endDate);
-  const days =
-    Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  const days = Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
   if (days <= 0) return { ok: false, error: 'Khoảng ngày không hợp lệ.' };
 
   try {
@@ -73,31 +115,18 @@ export async function approveLeave(id: string): Promise<Result> {
   }
   const approverId = await getCurrentEmployeeId();
 
-  const [leave] = await db
-    .select()
-    .from(leaveRequests)
-    .where(eq(leaveRequests.id, id))
-    .limit(1);
+  const [leave] = await db.select().from(leaveRequests).where(eq(leaveRequests.id, id)).limit(1);
   if (!leave) return { ok: false, error: 'Không tìm thấy đơn.' };
-  if (leave.status !== 'pending')
-    return { ok: false, error: 'Đơn đã được xử lý.' };
+  if (leave.status !== 'pending') return { ok: false, error: 'Đơn đã được xử lý.' };
 
-  // Chặn duyệt phép năm vượt số dư còn lại.
   if (leave.type === 'annual') {
     const year = new Date(leave.startDate).getFullYear();
     const [bal] = await db
       .select()
       .from(leaveBalances)
-      .where(
-        and(
-          eq(leaveBalances.employeeId, leave.employeeId),
-          eq(leaveBalances.year, year)
-        )
-      )
+      .where(and(eq(leaveBalances.employeeId, leave.employeeId), eq(leaveBalances.year, year)))
       .limit(1);
-    const remaining = bal
-      ? Number(bal.entitledDays) - Number(bal.usedDays)
-      : 0;
+    const remaining = bal ? Number(bal.entitledDays) - Number(bal.usedDays) : 0;
     if (Number(leave.days) > remaining) {
       return {
         ok: false,
@@ -112,18 +141,12 @@ export async function approveLeave(id: string): Promise<Result> {
       .set({ status: 'approved', approverId: approverId ?? null })
       .where(eq(leaveRequests.id, id));
 
-    // Chỉ phép năm mới trừ vào số dư phép.
     if (leave.type === 'annual') {
       const year = new Date(leave.startDate).getFullYear();
       const updated = await tx
         .update(leaveBalances)
         .set({ usedDays: sql`${leaveBalances.usedDays} + ${leave.days}` })
-        .where(
-          and(
-            eq(leaveBalances.employeeId, leave.employeeId),
-            eq(leaveBalances.year, year)
-          )
-        )
+        .where(and(eq(leaveBalances.employeeId, leave.employeeId), eq(leaveBalances.year, year)))
         .returning({ id: leaveBalances.id });
 
       if (updated.length === 0) {
@@ -147,10 +170,7 @@ export async function rejectLeave(id: string): Promise<Result> {
   } catch {
     return { ok: false, error: 'Chỉ quản lý trở lên được phê duyệt.' };
   }
-  await db
-    .update(leaveRequests)
-    .set({ status: 'rejected' })
-    .where(eq(leaveRequests.id, id));
+  await db.update(leaveRequests).set({ status: 'rejected' }).where(eq(leaveRequests.id, id));
   revalidatePath('/dashboard/attendance/leaves');
   return { ok: true };
 }

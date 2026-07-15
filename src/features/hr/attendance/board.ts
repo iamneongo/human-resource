@@ -1,6 +1,5 @@
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { and, asc, count, desc, eq, gte, ilike, inArray, lte, or } from 'drizzle-orm';
 
@@ -18,6 +17,7 @@ import {
   shifts,
   timesheets
 } from '@/db/schema';
+import { requireAuthUserId } from '@/lib/auth';
 import { getCurrentEmployeeId, requireRole } from '@/lib/rbac';
 
 export type AttendanceBoardShift = {
@@ -68,6 +68,11 @@ export type AttendanceBoardData = {
   pageCount: number;
   searchQuery: string;
   lock: AttendanceBoardLock;
+  summary: {
+    manualOverrideCount: number;
+    approvedLeaveCount: number;
+    approvedOtCount: number;
+  };
 };
 
 type AttendanceBoardFilters = {
@@ -467,7 +472,12 @@ export async function getAttendanceBoardData(
       standardHours: toNumber(row.standardHours, 8)
     })),
     employees: boardEmployees,
-    lock
+    lock,
+    summary: {
+      manualOverrideCount: manualRows.length,
+      approvedLeaveCount: leaveRows.length,
+      approvedOtCount: otRows.length
+    }
   };
 }
 
@@ -489,7 +499,7 @@ export async function saveAttendanceBoardRow(input: SaveAttendanceBoardRowInput)
     return { ok: false, error: 'Chỉ HR/Admin mới được cập nhật chấm công.' };
   }
 
-  const { userId } = await auth();
+  const userId = await requireAuthUserId().catch(() => null);
   if (!userId) return { ok: false, error: 'Bạn cần đăng nhập.' };
 
   const actorEmployeeId = await getCurrentEmployeeId();
@@ -592,7 +602,7 @@ export async function clearAttendanceBoardRow(
     return { ok: false, error: 'Chỉ HR/Admin mới được xóa chấm công.' };
   }
 
-  const { userId } = await auth();
+  const userId = await requireAuthUserId().catch(() => null);
   if (!userId) return { ok: false, error: 'Bạn cần đăng nhập.' };
   const actorEmployeeId = await getCurrentEmployeeId();
   const { weekStart, weekEnd, weekDates } = getWeekDates(weekStartInput);
@@ -661,7 +671,7 @@ export async function toggleAttendanceWeekLock(
     return { ok: false, error: 'Chỉ HR/Admin mới được khóa tuần công.' };
   }
 
-  const { userId } = await auth();
+  const userId = await requireAuthUserId().catch(() => null);
   if (!userId) return { ok: false, error: 'Bạn cần đăng nhập.' };
 
   const { weekStart, weekEnd, weekDates } = getWeekDates(weekStartInput);

@@ -33,8 +33,10 @@ export const maritalStatusEnum = pgEnum('marital_status', [
 
 export const employeeDocumentTypeEnum = pgEnum('employee_document_type', [
   'degree',
-  'cv',
   'id_card',
+  'social_insurance',
+  'certificate',
+  'cv',
   'other'
 ]);
 
@@ -91,7 +93,8 @@ export const employees = pgTable(
     resignDate: date('resign_date'), // ngày nghỉ việc
     resignReason: text('resign_reason'), // lý do thôi việc
     status: employeeStatusEnum('status').notNull().default('probation'),
-    clerkUserId: text('clerk_user_id'),
+    authUserId: text('auth_user_id'),
+    legacyClerkUserId: text('clerk_user_id'),
     departmentId: uuid('department_id').references(() => departments.id),
     positionId: uuid('position_id').references(() => positions.id),
     managerId: uuid('manager_id'),
@@ -117,6 +120,7 @@ export const employeeDocuments = pgTable('employee_documents', {
   fileUrl: text('file_url').notNull(),
   note: text('note'),
   issueDate: date('issue_date'),
+  expiryDate: date('expiry_date'),
   ...timestamps
 });
 

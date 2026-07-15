@@ -1,53 +1,28 @@
 'use client';
 
 import PageContainer from '@/components/layout/page-container';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useOrganization } from '@clerk/nextjs';
-import { PricingTable } from '@clerk/nextjs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icons } from '@/components/icons';
-import { billingInfoContent } from '@/config/infoconfig';
 
 export default function BillingPage() {
-  const { organization, isLoaded } = useOrganization();
-
   return (
-    <PageContainer
-      isLoading={!isLoaded}
-      access={!!organization}
-      accessFallback={
-        <div className='flex min-h-[400px] items-center justify-center'>
-          <div className='space-y-2 text-center'>
-            <h2 className='text-2xl font-semibold'>No Organization Selected</h2>
-            <p className='text-muted-foreground'>
-              Please select or create an organization to view billing information.
-            </p>
-          </div>
-        </div>
-      }
-      infoContent={billingInfoContent}
-      pageTitle='Billing & Plans'
-    >
+    <PageContainer pageTitle='Billing & Plans'>
       <div className='space-y-6'>
-        {/* Info Alert */}
         <Alert>
           <Icons.info className='h-4 w-4' />
           <AlertDescription>
-            Plans and subscriptions are managed through Clerk Billing. Subscribe to a plan to unlock
-            features and higher limits.
+            Billing theo organization đã được tách khỏi ứng dụng trong giai đoạn migration xác thực.
           </AlertDescription>
         </Alert>
 
-        {/* Clerk Pricing Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Available Plans</CardTitle>
-            <CardDescription>Choose a plan that fits your organization's needs</CardDescription>
+            <CardTitle>Billing đang tạm tắt</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className='mx-auto max-w-4xl'>
-              <PricingTable for='organization' />
-            </div>
+          <CardContent className='text-muted-foreground max-w-2xl text-sm leading-6'>
+            Trang này được giữ lại để không làm vỡ điều hướng cũ. Nếu cần tính phí theo workspace,
+            bước tiếp theo nên nối cổng thanh toán riêng cho hệ thống.
           </CardContent>
         </Card>
       </div>

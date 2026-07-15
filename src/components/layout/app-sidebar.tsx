@@ -1,4 +1,14 @@
 'use client';
+
+import * as React from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+
+import { UserAvatarProfile } from '@/components/user-avatar-profile';
+import { navGroups } from '@/config/nav-config';
+import { useMediaQuery } from '@/hooks/use-media-query';
+import { useFilteredNavGroups } from '@/hooks/use-nav';
+import { authClient } from '@/lib/auth-client';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   DropdownMenu,
@@ -24,25 +34,16 @@ import {
   SidebarMenuSubItem,
   SidebarRail
 } from '@/components/ui/sidebar';
-import { UserAvatarProfile } from '@/components/user-avatar-profile';
-import { navGroups } from '@/config/nav-config';
-import { useMediaQuery } from '@/hooks/use-media-query';
-import { useOrganization, useUser } from '@clerk/nextjs';
-import { useFilteredNavGroups } from '@/hooks/use-nav';
-import { SignOutButton } from '@clerk/nextjs';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import * as React from 'react';
 import { Icons } from '../icons';
 import { AppBrand } from './app-brand';
 
 export default function AppSidebar() {
   const pathname = usePathname();
   const { isOpen } = useMediaQuery();
-  const { user } = useUser();
-  const { organization } = useOrganization();
+  const { data: currentSession } = authClient.useSession();
   const router = useRouter();
   const filteredGroups = useFilteredNavGroups(navGroups);
+  const user = currentSession?.user ?? null;
 
   React.useEffect(() => {
     // Side effects based on sidebar state changes
@@ -60,7 +61,7 @@ export default function AppSidebar() {
             <SidebarMenu>
               {group.items.map((item) => {
                 const Icon = item.icon ? Icons[item.icon] : Icons.logo;
-                return item?.items && item?.items?.length > 0 ? (
+                return item?.items && item.items.length > 0 ? (
                   <Collapsible
                     key={item.title}
                     asChild
@@ -77,12 +78,12 @@ export default function AppSidebar() {
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <SidebarMenuSub>
-                          {item.items?.map((subItem) => (
+                          {item.items.map((subItem) => (
                             <SidebarMenuSubItem key={subItem.title}>
                               {subItem.disabled ? (
                                 <SidebarMenuSubButton
                                   className='cursor-not-allowed opacity-40'
-                                  onClick={(e) => e.preventDefault()}
+                                  onClick={(event) => event.preventDefault()}
                                 >
                                   <span>{subItem.title}</span>
                                 </SidebarMenuSubButton>
@@ -127,8 +128,10 @@ export default function AppSidebar() {
                   size='lg'
                   className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
                 >
-                  {user && (
+                  {user ? (
                     <UserAvatarProfile className='h-8 w-8 rounded-lg' showInfo user={user} />
+                  ) : (
+                    <div className='text-muted-foreground text-sm'>Tài khoản</div>
                   )}
                   <Icons.chevronsDown className='ml-auto size-4' />
                 </SidebarMenuButton>
@@ -141,9 +144,9 @@ export default function AppSidebar() {
               >
                 <DropdownMenuLabel className='p-0 font-normal'>
                   <div className='px-1 py-1.5'>
-                    {user && (
+                    {user ? (
                       <UserAvatarProfile className='h-8 w-8 rounded-lg' showInfo user={user} />
-                    )}
+                    ) : null}
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -153,21 +156,30 @@ export default function AppSidebar() {
                     <Icons.account className='mr-2 h-4 w-4' />
                     Hồ sơ cá nhân
                   </DropdownMenuItem>
-                  {organization && (
-                    <DropdownMenuItem onClick={() => router.push('/dashboard/billing')}>
-                      <Icons.creditCard className='mr-2 h-4 w-4' />
-                      Thanh toán
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem onClick={() => router.push('/dashboard/workspaces/team')}>
+                    <Icons.teams className='mr-2 h-4 w-4' />
+                    Thành viên workspace
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => router.push('/dashboard/notifications')}>
                     <Icons.notification className='mr-2 h-4 w-4' />
                     Thông báo
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    void authClient.signOut({
+                      fetchOptions: {
+                        onSuccess: () => {
+                          router.push('/auth/sign-in');
+                          router.refresh();
+                        }
+                      }
+                    })
+                  }
+                >
                   <Icons.logout className='mr-2 h-4 w-4' />
-                  <SignOutButton redirectUrl='/auth/sign-in'>Đăng xuất</SignOutButton>
+                  Đăng xuất
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

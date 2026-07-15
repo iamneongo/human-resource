@@ -24,6 +24,7 @@ import {
   contracts,
   costCenters,
   departments,
+  employeeDocuments,
   employees,
   insuranceTaxConfigs,
   jobAssignments,
@@ -121,6 +122,10 @@ function chunk<T>(items: T[], size = BATCH_SIZE) {
     result.push(items.slice(index, index + size));
   }
   return result;
+}
+
+function buildInlineDemoFile(name: string) {
+  return `data:text/plain;charset=utf-8,${encodeURIComponent(`Demo file: ${name}`)}`;
 }
 
 async function insertBatches<T>(label: string, table: any, values: T[]) {
@@ -439,6 +444,7 @@ async function seedHrModules(employeesBase: EmployeeSeedRow[]) {
   const salaryInfoValues: (typeof salaryInfos.$inferInsert)[] = [];
   const assetValues: (typeof assets.$inferInsert)[] = [];
   const rewardValues: (typeof rewardsDisciplines.$inferInsert)[] = [];
+  const documentValues: (typeof employeeDocuments.$inferInsert)[] = [];
 
   const activeEmployees = employeesBase.filter((employee) => employee.status !== 'terminated');
 
@@ -545,11 +551,57 @@ async function seedHrModules(employeesBase: EmployeeSeedRow[]) {
         formOrValue: 'Nhắc nhở bằng văn bản'
       });
     }
+
+    documentValues.push(
+      {
+        employeeId: employee.id,
+        type: 'id_card',
+        name: 'CCCD gắn chip',
+        fileUrl: buildInlineDemoFile(`${employee.employeeCode}-cccd.pdf`),
+        issueDate: formatDate(addMonths(new Date(`${hireDate}T00:00:00+07:00`), -6)),
+        expiryDate: index % 10 === 0 ? formatDate(addDays(new Date(), 20)) : null,
+        note: index % 10 === 0 ? 'Case demo giấy tờ sắp hết hạn' : 'Hồ sơ cá nhân đã số hóa'
+      },
+      {
+        employeeId: employee.id,
+        type: 'degree',
+        name: 'Bằng cấp chuyên môn',
+        fileUrl: buildInlineDemoFile(`${employee.employeeCode}-degree.pdf`),
+        issueDate: formatDate(addMonths(new Date(`${hireDate}T00:00:00+07:00`), -24)),
+        expiryDate: null,
+        note: 'Lưu bản scan dùng cho demo'
+      }
+    );
+
+    if (index % 4 !== 0) {
+      documentValues.push({
+        employeeId: employee.id,
+        type: 'social_insurance',
+        name: 'Sổ BHXH',
+        fileUrl: buildInlineDemoFile(`${employee.employeeCode}-bhxh.pdf`),
+        issueDate: hireDate,
+        expiryDate: null,
+        note: 'Đủ bộ hồ sơ bắt buộc'
+      });
+    }
+
+    if (index % 5 === 0) {
+      documentValues.push({
+        employeeId: employee.id,
+        type: 'certificate',
+        name: 'Chứng chỉ an toàn lao động',
+        fileUrl: buildInlineDemoFile(`${employee.employeeCode}-atld.pdf`),
+        issueDate: formatDate(addMonths(new Date(), -10)),
+        expiryDate: formatDate(addDays(new Date(), 35)),
+        note: 'Case demo chứng chỉ sắp hết hạn'
+      });
+    }
   }
 
   await insertBatches('contracts', contracts, contractsValues);
   await insertBatches('job assignments', jobAssignments, assignmentsValues);
   await insertBatches('salary infos', salaryInfos, salaryInfoValues);
+  await insertBatches('employee documents', employeeDocuments, documentValues);
   await insertBatches('assets', assets, assetValues);
   await insertBatches('rewards / disciplines', rewardsDisciplines, rewardValues);
 }

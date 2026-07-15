@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { desc, eq, ne } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { employees, payrollRuns, payslips } from '@/db/schema';
+import { departments, employees, payrollRuns, payslips } from '@/db/schema';
 import { requireRole } from '@/lib/rbac';
 
 type Result = { ok: true } | { ok: false; error: string };
@@ -34,10 +34,14 @@ export async function listPayslips(runId?: string) {
   const query = db
     .select({
       id: payslips.id,
+      payrollRunId: payslips.payrollRunId,
+      employeeId: payslips.employeeId,
       period: payrollRuns.period,
       runStatus: payrollRuns.status,
       employeeName: employees.fullName,
       employeeCode: employees.employeeCode,
+      departmentId: employees.departmentId,
+      departmentName: departments.name,
       isPreview: payslips.isPreview,
       baseSalary: payslips.baseSalary,
       allowances: payslips.allowances,
@@ -52,6 +56,7 @@ export async function listPayslips(runId?: string) {
     })
     .from(payslips)
     .leftJoin(employees, eq(payslips.employeeId, employees.id))
+    .leftJoin(departments, eq(employees.departmentId, departments.id))
     .leftJoin(payrollRuns, eq(payslips.payrollRunId, payrollRuns.id))
     .orderBy(desc(payrollRuns.period))
     .limit(500);

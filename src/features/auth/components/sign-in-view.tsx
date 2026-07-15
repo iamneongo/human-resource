@@ -1,8 +1,9 @@
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { SignIn as ClerkSignInForm } from '@clerk/nextjs';
 import { Metadata } from 'next';
 import Link from 'next/link';
+
+import { OtpSignInForm } from './otp-sign-in-form';
 import { InteractiveGridPattern } from './interactive-grid';
 
 export const metadata: Metadata = {
@@ -14,13 +15,13 @@ export default function SignInViewPage() {
   return (
     <div className='relative flex min-h-screen flex-col items-center justify-center overflow-hidden md:grid lg:max-w-none lg:grid-cols-2 lg:px-0'>
       <Link
-        href='/examples/authentication'
+        href='/auth/sign-up'
         className={cn(
           buttonVariants({ variant: 'ghost' }),
           'absolute top-4 right-4 hidden md:top-8 md:right-8'
         )}
       >
-        Đăng nhập
+        Đăng ký
       </Link>
       <div className='relative hidden h-full flex-col p-10 lg:flex dark:border-r'>
         <div className='absolute inset-0 bg-sidebar' />
@@ -48,8 +49,8 @@ export default function SignInViewPage() {
         <div className='text-sidebar-foreground relative z-20 mt-auto'>
           <blockquote className='space-y-2'>
             <p className='text-lg'>
-              &ldquo;Hệ thống quản lý nguồn nhân lực toàn diện — hồ sơ, chấm công,
-              tính lương, hiệu suất và đào tạo, tất cả trong một nền tảng.&rdquo;
+              &ldquo;Hệ thống quản lý nguồn nhân lực toàn diện: hồ sơ, chấm công, tiền lương và vận
+              hành nhân sự trên cùng một nền tảng.&rdquo;
             </p>
             <footer className='text-sidebar-foreground/70 text-sm'>Nhân sự HRM</footer>
           </blockquote>
@@ -57,11 +58,7 @@ export default function SignInViewPage() {
       </div>
       <div className='flex h-full items-center justify-center p-4 lg:p-8'>
         <div className='flex w-full max-w-md flex-col items-center justify-center space-y-6'>
-          <ClerkSignInForm
-            initialValues={{
-              emailAddress: 'your_mail+clerk_test@example.com'
-            }}
-          />
+          <OtpSignInForm />
           <p className='text-muted-foreground px-8 text-center text-sm'>
             Khi tiếp tục, bạn đồng ý với{' '}
             <Link

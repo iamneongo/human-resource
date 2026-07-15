@@ -1,4 +1,5 @@
 export * from './_shared';
+export * from './auth';
 export * from './files';
 export * from './hr01-employees';
 export * from './hr01-profiles';
