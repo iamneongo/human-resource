@@ -57,7 +57,7 @@ export const teamInfoContent: InfobarContent = {
     {
       title: 'Overview',
       description:
-        "The Team Management page allows you to manage your workspace team, including members, roles, security settings, and more. This page provides comprehensive organization management through Clerk's OrganizationProfile component.",
+        "The Team Management page uses Clerk's native OrganizationProfile interface so your team can invite and manage members with the standard Clerk experience.",
       links: [
         {
           title: 'Clerk Organizations Documentation',
@@ -68,7 +68,7 @@ export const teamInfoContent: InfobarContent = {
     {
       title: 'Managing Team Members',
       description:
-        'You can add, remove, and manage team members from this page. Invite new members by email, assign roles, and control their access levels. Each member can have different permissions based on their role.',
+        'Use the Members section in Clerk to invite people by email, review existing memberships, and handle organization access in one place.',
       links: []
     },
     {
