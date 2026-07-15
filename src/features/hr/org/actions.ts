@@ -313,7 +313,7 @@ export async function linkEmployeeAccount(v: Record<string, string>): Promise<Re
     if (!matchedUser) {
       return {
         ok: false,
-        error: `Không tìm thấy tài khoản Better Auth với email ${accountEmail}. Người dùng cần đăng nhập bằng OTP trước.`
+        error: `Không tìm thấy tài khoản Better Auth với email ${accountEmail}. Hãy cấp hoặc tạo tài khoản nội bộ trước.`
       };
     }
 

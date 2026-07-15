@@ -15,9 +15,9 @@ export default function AboutPage() {
         <section className='space-y-3'>
           <h2 className='text-xl font-semibold'>Xác thực đăng nhập</h2>
           <p className='text-muted-foreground leading-7'>
-            Hệ thống hiện dùng <strong>Better Auth</strong> kết hợp <strong>Resend OTP</strong> để
-            đăng nhập bằng email công việc. Cách này giúp luồng truy cập nội bộ gọn hơn và dễ tự chủ
-            hơn so với giải pháp cũ.
+            Hệ thống hiện dùng <strong>Better Auth</strong> với mô hình tài khoản nội bộ bằng{' '}
+            <strong>tài khoản và mật khẩu</strong>. Quản trị viên có thể cấp sẵn tài khoản cho từng
+            thành viên để đảm bảo đúng quyền truy cập và đúng dữ liệu công ty.
           </p>
         </section>
 

@@ -1,11 +1,11 @@
 /* eslint-disable no-console */
 /**
- * Gán role HRM cho một user Better Auth theo email.
+ * Gan role HRM cho mot user Better Auth theo email.
  *
- * Dùng sau khi người dùng đăng nhập OTP lần đầu:
+ * Su dung:
  *   bun run scripts/set-role.ts hr@congty.com admin
  *
- * Roles hợp lệ: admin | hr | manager | employee
+ * Roles hop le: admin | hr | manager | employee
  */
 import 'dotenv/config';
 import { eq } from 'drizzle-orm';
@@ -26,10 +26,14 @@ if (!['admin', 'hr', 'manager', 'employee'].includes(role)) {
 }
 
 const normalizedEmail = email.trim().toLowerCase();
-const [matchedUser] = await db.select({ id: user.id }).from(user).where(eq(user.email, normalizedEmail)).limit(1);
+const [matchedUser] = await db
+  .select({ id: user.id })
+  .from(user)
+  .where(eq(user.email, normalizedEmail))
+  .limit(1);
 
 if (!matchedUser) {
-  console.error(`Không tìm thấy user với email ${normalizedEmail}. Hãy đăng nhập OTP trước.`);
+  console.error(`Khong tim thay user voi email ${normalizedEmail}.`);
   process.exit(1);
 }
 
@@ -41,4 +45,4 @@ await db
   })
   .where(eq(user.id, matchedUser.id));
 
-console.log(`Đã gán role "${role}" cho ${normalizedEmail}.`);
+console.log(`Da gan role "${role}" cho ${normalizedEmail}.`);

@@ -32,8 +32,11 @@ export type AttendanceBoardCell = {
   afternoon: boolean;
   source: 'timesheet' | 'manual' | 'empty';
   conflicts: string[];
+  conflictKinds: AttendanceConflictKind[];
   note: string | null;
 };
+
+export type AttendanceConflictKind = 'machine' | 'overtime' | 'leave' | 'override';
 
 export type AttendanceBoardEmployee = {
   id: string;
@@ -135,6 +138,7 @@ function buildEmptyCells(weekDates: string[]) {
         afternoon: false,
         source: 'empty' as const,
         conflicts: [],
+        conflictKinds: [],
         note: null
       }
     ])
@@ -153,14 +157,35 @@ function toNumber(value: string | number | null | undefined, fallback: number) {
 function normalizeCell(workedHours: string | null, standardHours: number): AttendanceBoardCell {
   const hours = workedHours ? Number(workedHours) : 0;
   if (!Number.isFinite(hours) || hours <= 0) {
-    return { morning: false, afternoon: false, source: 'empty', conflicts: [], note: null };
+    return {
+      morning: false,
+      afternoon: false,
+      source: 'empty',
+      conflicts: [],
+      conflictKinds: [],
+      note: null
+    };
   }
 
   if (hours >= standardHours - 0.01) {
-    return { morning: true, afternoon: true, source: 'timesheet', conflicts: [], note: null };
+    return {
+      morning: true,
+      afternoon: true,
+      source: 'timesheet',
+      conflicts: [],
+      conflictKinds: [],
+      note: null
+    };
   }
 
-  return { morning: true, afternoon: false, source: 'timesheet', conflicts: [], note: null };
+  return {
+    morning: true,
+    afternoon: false,
+    source: 'timesheet',
+    conflicts: [],
+    conflictKinds: [],
+    note: null
+  };
 }
 
 function getWeekPeriods(weekDates: string[]) {
@@ -226,6 +251,10 @@ async function getAttendanceLockStatus(weekStart: string, weekEnd: string, weekD
 
 function addConflict(conflicts: string[], message: string) {
   if (!conflicts.includes(message)) conflicts.push(message);
+}
+
+function addConflictKind(kinds: AttendanceConflictKind[], kind: AttendanceConflictKind) {
+  if (!kinds.includes(kind)) kinds.push(kind);
 }
 
 export async function getAttendanceBoardData(
@@ -420,24 +449,35 @@ export async function getAttendanceBoardData(
           afternoon: manual.afternoon,
           source: 'manual',
           conflicts: [],
+          conflictKinds: [],
           note: manual.note
         };
       }
 
       const conflicts: string[] = [];
-      if (rows.some((row) => row.workDate === date))
-        addConflict(conflicts, 'Có timesheet chi tiết');
-      if (otByEmployeeDate.has(`${employee.id}:${date}`)) addConflict(conflicts, 'Có OT đã duyệt');
+      const conflictKinds: AttendanceConflictKind[] = [];
+      if (rows.some((row) => row.workDate === date)) {
+        addConflict(conflicts, 'Có công máy');
+        addConflictKind(conflictKinds, 'machine');
+      }
+      if (otByEmployeeDate.has(`${employee.id}:${date}`)) {
+        addConflict(conflicts, 'Có OT đã duyệt');
+        addConflictKind(conflictKinds, 'overtime');
+      }
       const leaveTypes = leaveByEmployeeDate.get(`${employee.id}:${date}`) ?? [];
       for (const leaveType of leaveTypes) {
         addConflict(conflicts, `Có nghỉ phép ${leaveType}`);
+        addConflictKind(conflictKinds, 'leave');
       }
-      if (manual && conflicts.length > 0) addConflict(conflicts, 'Đang dùng công thủ công');
-      cells[date] = { ...cells[date], conflicts };
+      if (manual && conflicts.length > 0) {
+        addConflict(conflicts, 'Đang override bằng công thủ công');
+        addConflictKind(conflictKinds, 'override');
+      }
+      cells[date] = { ...cells[date], conflicts, conflictKinds };
     }
 
     const conflictCount = Object.values(cells).reduce(
-      (sum, cell) => sum + cell.conflicts.length,
+      (sum, cell) => sum + (cell.conflictKinds.length > 0 ? 1 : 0),
       0
     );
 

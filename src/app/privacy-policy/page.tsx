@@ -13,19 +13,19 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section className='space-y-3'>
-          <h2 className='text-xl font-semibold'>Xác thực và OTP</h2>
+          <h2 className='text-xl font-semibold'>Xác thực tài khoản</h2>
           <p className='text-muted-foreground leading-7'>
-            Đăng nhập được xử lý qua Better Auth. Mã OTP được gửi bằng Resend tới email công việc mà
-            người dùng cung cấp. Nếu chưa cấu hình Resend ở môi trường phát triển, OTP chỉ được ghi
-            log nội bộ để phục vụ test.
+            Đăng nhập được xử lý qua Better Auth theo mô hình tài khoản nội bộ bằng tài khoản và mật
+            khẩu. Email chỉ còn được dùng cho thông báo vận hành như cấp tài khoản hoặc mời thành
+            viên, không còn là cơ chế OTP đăng nhập chính.
           </p>
         </section>
 
         <section className='space-y-3'>
           <h2 className='text-xl font-semibold'>Dữ liệu lưu trữ</h2>
           <p className='text-muted-foreground leading-7'>
-            Thông tin phiên đăng nhập, tài khoản, xác minh OTP và dữ liệu nghiệp vụ HRM được lưu
-            trong PostgreSQL của hệ thống. Quyền truy cập được kiểm soát theo vai trò nội bộ.
+            Thông tin phiên đăng nhập, tài khoản và dữ liệu nghiệp vụ HRM được lưu trong PostgreSQL
+            của hệ thống. Quyền truy cập được kiểm soát theo vai trò nội bộ.
           </p>
         </section>
 

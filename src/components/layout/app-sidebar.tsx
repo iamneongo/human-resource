@@ -50,7 +50,7 @@ export default function AppSidebar() {
   }, [isOpen]);
 
   return (
-    <Sidebar collapsible='icon'>
+    <Sidebar collapsible='icon' data-tour='nav-sidebar'>
       <SidebarHeader className='group-data-[collapsible=icon]:pt-4'>
         <AppBrand />
       </SidebarHeader>
@@ -126,6 +126,7 @@ export default function AppSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   size='lg'
+                  data-tour='sidebar-profile-menu'
                   className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
                 >
                   {user ? (

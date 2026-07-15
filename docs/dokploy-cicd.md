@@ -1,53 +1,59 @@
 # GitHub Actions + Dokploy
 
-Pipeline này chạy theo đúng thứ tự:
+Pipeline nay chay theo dung thu tu:
 
 1. GitHub Actions checkout code
 2. `bun install --frozen-lockfile`
-3. `bun run build` trên GitHub
-4. Nếu build xanh, build Docker image
-5. Push image lên `ghcr.io/<github-owner>/<github-repo>`
-6. Gọi Dokploy API để redeploy application hiện có
+3. `bun run build` tren GitHub
+4. Neu build xanh, build Docker image
+5. Push image len `ghcr.io/<github-owner>/<github-repo>`
+6. Goi Dokploy API de redeploy application hien co
 
-Dokploy chỉ kéo image mới sau khi bước build trên GitHub đã thành công.
+Dokploy chi keo image moi sau khi buoc build tren GitHub da thanh cong.
 
-## 1. Chuẩn bị trên Dokploy
+## Canonical production URL
 
-Tạo hoặc chỉnh application theo kiểu:
+Production canonical domain duoc chot la:
+
+```env
+BETTER_AUTH_URL=https://human-resource.apps.neooi.com
+NEXT_PUBLIC_APP_URL=https://human-resource.apps.neooi.com
+```
+
+`https://apps.neooi.com` chi duoc giu trong Better Auth `trustedOrigins` de compatibility tam thoi. Khong dung domain nay lam `baseURL`, metadata URL, auth invite link, hay runtime production default.
+
+## 1. Chuan bi tren Dokploy
+
+Tao hoac chinh application theo kieu:
 
 - `Source Type`: `Docker`
 - `Docker Image`: `ghcr.io/<github-owner>/<github-repo>:latest`
 - `Port`: `3000`
 
-Application phải tồn tại sẵn trên Dokploy. Workflow này không tự tạo app mới.
+Application phai ton tai san tren Dokploy. Workflow nay khong tu tao app moi.
 
-Nếu image là private trên GHCR, cần đảm bảo Dokploy đã có quyền pull:
-
-- dùng GitHub personal access token hoặc registry credential trong Dokploy
-- account/token đó phải có quyền đọc package của repo này
+Neu image la private tren GHCR, can dam bao Dokploy da co quyen pull.
 
 ## 2. GitHub Actions workflow
 
-Workflow nằm tại:
+Workflow nam tai:
 
 - [deploy.yml](/C:/CongViec/nhansu/.github/workflows/deploy.yml)
 
-Workflow chỉ tự chạy khi push vào `main`.
+Workflow tu chay khi push vao `main`, va co the chay tay bang `workflow_dispatch`.
 
-Ngoài ra có thể chạy tay bằng `workflow_dispatch`.
+## 3. Secrets can them trong GitHub
 
-## 3. Secrets cần thêm trong GitHub
+Vao `Settings -> Secrets and variables -> Actions` va tao cac secret sau.
 
-Vào `Settings -> Secrets and variables -> Actions` và tạo các secret sau.
-
-### Bắt buộc để build trên GitHub
+### Bat buoc de build tren GitHub
 
 - `DATABASE_URL`
 - `BETTER_AUTH_SECRET`
 - `BETTER_AUTH_URL`
 - `NEXT_PUBLIC_APP_URL`
 
-### Khuyên thêm để build giống production
+### Nen them de build giong production
 
 - `NEXT_PUBLIC_SENTRY_DISABLED`
 - `NEXT_PUBLIC_SENTRY_DSN`
@@ -57,66 +63,49 @@ Vào `Settings -> Secrets and variables -> Actions` và tạo các secret sau.
 - `AUTH_FROM_EMAIL`
 - `RESEND_API_KEY`
 
-### Bắt buộc để trigger Dokploy
+### Bat buoc de trigger Dokploy
 
 - `DOKPLOY_URL`
-  Ví dụ: `https://dokploy.neooi.com`
 - `DOKPLOY_API_KEY`
 - `DOKPLOY_APPLICATION_ID`
 
-## 4. Runtime env nên đặt ở Dokploy
+## 4. Runtime env phai dat o Dokploy
 
-Các biến dưới đây không nên chỉ tồn tại ở GitHub. Chúng cũng phải có ở Dokploy runtime:
+Nhung bien nay khong duoc chi ton tai o GitHub. Chung cung phai co o Dokploy runtime:
 
 - `DATABASE_URL`
 - `BETTER_AUTH_SECRET`
-- `BETTER_AUTH_URL`
-- `NEXT_PUBLIC_APP_URL`
+- `BETTER_AUTH_URL=https://human-resource.apps.neooi.com`
+- `NEXT_PUBLIC_APP_URL=https://human-resource.apps.neooi.com`
 - `AUTH_FROM_EMAIL`
 - `RESEND_API_KEY`
 - `NEXT_PUBLIC_SENTRY_DISABLED`
-- các biến Sentry khác nếu đang dùng
+- cac bien Sentry khac neu dang dung
 
-Lý do:
+Ly do:
 
-- GitHub cần env để `next build`
-- Dokploy cần env để container chạy thật sau khi pull image
+- GitHub can env de `next build`
+- Dokploy can env de container chay that sau khi pull image
 
-## 5. Cách lấy `applicationId`
+## 5. Luong deploy thuc te
 
-Có thể lấy từ:
+Khi push len `main`:
 
-- Dokploy UI
-- Dokploy API / Swagger
-- hoặc MCP Dokploy nếu đang kết nối được
+1. Job `verify` chay `bun run build`
+2. Neu fail, pipeline dung ngay, Dokploy khong bi goi
+3. Neu pass, job `docker` build/push image len GHCR
+4. Khi image da co tren GHCR, job `deploy` goi `POST /api/application.redeploy`
+5. Dokploy pull tag `latest` va restart app
 
-## 6. Luồng deploy thực tế
+## 6. Checklist tranh lap lai loi 403 OTP
 
-Khi push lên `main`:
-
-1. Job `verify` chạy `bun run build`
-2. Nếu fail, pipeline dừng luôn, Dokploy không bị gọi
-3. Nếu pass, job `docker` build/push image lên GHCR
-4. Khi image đã có trên GHCR, job `deploy` gọi `POST /api/application.redeploy`
-5. Dokploy pull tag `latest` và restart app
-
-## 7. Ghi chú vận hành
-
-- App trên Dokploy nên dùng tag `latest` nếu muốn redeploy đơn giản theo workflow hiện tại.
-- Nếu muốn pin theo commit SHA, cần đổi cả image tag trên Dokploy và cách Dokploy nhận version.
-- Nếu GitHub build xanh nhưng Dokploy vẫn fail, thường nguyên nhân là:
-  - thiếu runtime env trên Dokploy
-  - Dokploy không pull được GHCR private image
-  - `DOKPLOY_APPLICATION_ID` sai
-  - app chưa map domain / port đúng
-
-## 8. Checklist cấu hình nhanh
-
-- [ ] Push code lên branch `main`
-- [ ] Repo đã bật GitHub Actions
-- [ ] GHCR package có thể được tạo từ workflow
-- [ ] GitHub Secrets đã điền đủ
-- [ ] Dokploy app đang trỏ tới `ghcr.io/<owner>/<repo>:latest`
-- [ ] Dokploy có quyền pull private image
-- [ ] Dokploy runtime env đã set đủ
-- [ ] `DOKPLOY_APPLICATION_ID` đúng app hiện tại
+- [ ] GitHub Actions secrets dung canonical production URL:
+  - `BETTER_AUTH_URL=https://human-resource.apps.neooi.com`
+  - `NEXT_PUBLIC_APP_URL=https://human-resource.apps.neooi.com`
+- [ ] Dokploy runtime env dung y chang 2 gia tri tren
+- [ ] Better Auth `trustedOrigins` co:
+  - `https://human-resource.apps.neooi.com`
+  - `https://apps.neooi.com`
+  - cac localhost/dev origins dang dung
+- [ ] Khong con bat ky vi du production nao dung `https://apps.neooi.com` lam canonical URL
+- [ ] Neu doi domain Dokploy, phai doi dong thoi code + GitHub secrets + Dokploy runtime env

@@ -29,7 +29,11 @@ COPY . .
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build-time env vars - override these with --build-arg in CI
+# Build-time env vars - override these with --build-arg in CI.
+# Production canonical URL must be:
+#   BETTER_AUTH_URL=https://human-resource.apps.neooi.com
+#   NEXT_PUBLIC_APP_URL=https://human-resource.apps.neooi.com
+# https://apps.neooi.com is only a temporary trusted origin in Better Auth.
 ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
 ARG DATABASE_URL
 ARG BETTER_AUTH_URL=http://localhost:3000

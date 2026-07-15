@@ -1,14 +1,14 @@
 import { buttonVariants } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Metadata } from 'next';
 import Link from 'next/link';
 
-import { OtpSignInForm } from './otp-sign-in-form';
 import { InteractiveGridPattern } from './interactive-grid';
 
 export const metadata: Metadata = {
   title: 'Authentication',
-  description: 'Authentication forms built using the components.'
+  description: 'Internal account provisioning notice for HRM.'
 };
 
 export default function SignUpViewPage() {
@@ -48,35 +48,23 @@ export default function SignUpViewPage() {
         />
         <div className='text-sidebar-foreground relative z-20 mt-auto'>
           <blockquote className='space-y-2'>
-            <p className='text-lg'>
-              &ldquo;Không cần mật khẩu dài dòng. Chỉ cần email công việc và OTP để bắt đầu sử dụng
-              hệ thống nhân sự nội bộ.&rdquo;
-            </p>
+            <p className='text-lg'>&ldquo;Tài khoản được cấp tập trung bởi quản trị viên.&rdquo;</p>
             <footer className='text-sidebar-foreground/70 text-sm'>Nhân sự HRM</footer>
           </blockquote>
         </div>
       </div>
       <div className='flex h-full items-center justify-center p-4 lg:p-8'>
-        <div className='flex w-full max-w-md flex-col items-center justify-center space-y-6'>
-          <OtpSignInForm />
-          <p className='text-muted-foreground px-8 text-center text-sm'>
-            Khi tiếp tục, bạn đồng ý với{' '}
-            <Link
-              href='/terms-of-service'
-              className='hover:text-primary underline underline-offset-4'
-            >
-              Điều khoản dịch vụ
-            </Link>{' '}
-            và{' '}
-            <Link
-              href='/privacy-policy'
-              className='hover:text-primary underline underline-offset-4'
-            >
-              Chính sách bảo mật
+        <Card className='w-full max-w-md border-border/60 shadow-lg'>
+          <CardHeader className='space-y-2'>
+            <CardTitle className='text-2xl'>Không mở đăng ký công khai</CardTitle>
+            <CardDescription>Liên hệ quản trị viên hoặc HR để được cấp tài khoản.</CardDescription>
+          </CardHeader>
+          <CardContent className='space-y-4'>
+            <Link href='/auth/sign-in' className={cn(buttonVariants(), 'w-full')}>
+              Quay về đăng nhập
             </Link>
-            .
-          </p>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

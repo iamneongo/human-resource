@@ -35,7 +35,7 @@ export type Option = { value: string; label: string };
 export type FieldConfig = {
   name: string;
   label: string;
-  type?: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'email' | 'file';
+  type?: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'email' | 'file' | 'password';
   options?: Option[];
   required?: boolean;
   placeholder?: string;

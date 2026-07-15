@@ -50,6 +50,13 @@
       "when": 1784119492995,
       "tag": "0006_burly_the_initiative",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784772000000,
+      "tag": "0007_nimble_payroll_public_access",
+      "breakpoints": true
     }
   ]
 }

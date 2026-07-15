@@ -72,24 +72,33 @@ export default async function PayrollRunsPage() {
       pageTitle='Kỳ lương & chốt lương'
       pageDescription='Luồng payroll chuẩn của hệ thống là Nháp -> Preview -> Chốt -> Duyệt. Forecast theo ngày chỉ để tham khảo và không thay thế bước chốt kỳ lương.'
       pageHeaderAction={
-        <EntityFormDialog
-          triggerLabel='Tạo kỳ lương'
-          title='Tạo kỳ lương mới'
-          description='Mỗi kỳ lương là một lần snapshot dữ liệu công và lương để HR preview, chốt và trình duyệt.'
-          action={createPayrollRun}
-          fields={[
-            { name: 'period', label: 'Kỳ lương (YYYY-MM)', required: true, placeholder: '2026-07' },
-            { name: 'name', label: 'Tên kỳ lương' }
-          ]}
-          successMessage='Đã tạo kỳ lương'
-        />
+        <div data-tour='payroll-runs-create'>
+          <EntityFormDialog
+            triggerLabel='Tạo kỳ lương'
+            title='Tạo kỳ lương mới'
+            description='Mỗi kỳ lương là một lần snapshot dữ liệu công và lương để HR preview, chốt và trình duyệt.'
+            action={createPayrollRun}
+            fields={[
+              {
+                name: 'period',
+                label: 'Kỳ lương (YYYY-MM)',
+                required: true,
+                placeholder: '2026-07'
+              },
+              { name: 'name', label: 'Tên kỳ lương' }
+            ]}
+            successMessage='Đã tạo kỳ lương'
+          />
+        </div>
       }
     >
-      <SimpleTable
-        columns={columns}
-        rows={rows}
-        emptyText='Chưa có kỳ lương nào. Hãy tạo kỳ lương mới để preview hoặc chốt bảng lương.'
-      />
+      <div data-tour='payroll-runs-table'>
+        <SimpleTable
+          columns={columns}
+          rows={rows}
+          emptyText='Chưa có kỳ lương nào. Hãy tạo kỳ lương mới để preview hoặc chốt bảng lương.'
+        />
+      </div>
     </PageContainer>
   );
 }

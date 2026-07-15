@@ -1,7 +1,6 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { betterAuth } from 'better-auth/minimal';
 import { nextCookies } from 'better-auth/next-js';
-import { emailOTP } from 'better-auth/plugins';
 import { eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { Resend } from 'resend';
@@ -10,51 +9,72 @@ import { db } from '@/db';
 import { account, session, user, verification, workspaceInvitations } from '@/db/schema';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const PRODUCTION_CANONICAL_URL = 'https://human-resource.apps.neooi.com';
+const LOCAL_TRUSTED_ORIGINS = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3001'
+];
+const trustedOrigins = [
+  PRODUCTION_CANONICAL_URL,
+  'https://apps.neooi.com',
+  ...LOCAL_TRUSTED_ORIGINS
+];
 const authBaseUrl =
-  process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  process.env.BETTER_AUTH_URL ??
+  (process.env.NODE_ENV === 'production'
+    ? PRODUCTION_CANONICAL_URL
+    : (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'));
 const authFromEmail = process.env.AUTH_FROM_EMAIL ?? 'onboarding@resend.dev';
 const authSecret = process.env.BETTER_AUTH_SECRET ?? 'dev-only-secret-change-before-production';
 const authRoles = new Set(['admin', 'hr', 'manager', 'employee']);
 
-function formatOtpMail(
-  type: 'sign-in' | 'email-verification' | 'forget-password' | 'change-email'
-) {
-  switch (type) {
-    case 'email-verification':
-      return {
-        subject: 'Xac thuc email dang nhap HRM',
-        heading: 'Xac thuc dia chi email',
-        body: 'Nhap ma OTP duoi day de hoan tat xac thuc email tren he thong HRM.'
-      };
-    case 'forget-password':
-      return {
-        subject: 'Ma OTP khoi phuc truy cap HRM',
-        heading: 'Khoi phuc truy cap',
-        body: 'Nhap ma OTP duoi day de tiep tuc lay lai quyen truy cap tai khoan HRM.'
-      };
-    case 'change-email':
-      return {
-        subject: 'Ma OTP doi email HRM',
-        heading: 'Xac nhan doi email',
-        body: 'Nhap ma OTP duoi day de xac nhan thay doi email dang nhap HRM.'
-      };
-    default:
-      return {
-        subject: 'Ma OTP dang nhap HRM',
-        heading: 'Dang nhap vao he thong HRM',
-        body: 'Nhap ma OTP duoi day de dang nhap vao he thong quan ly nhan su.'
-      };
+function isTrustedOrigin(origin: string | null) {
+  return origin ? trustedOrigins.includes(origin) : false;
+}
+
+async function resolveTrustedOrigins(request?: Request | Headers) {
+  const sourceHeaders = request instanceof Headers ? request : request?.headers;
+  const originHeader = sourceHeaders?.get('origin') ?? null;
+  const refererHeader = sourceHeaders?.get('referer') ?? null;
+
+  let refererOrigin: string | null = null;
+  if (refererHeader) {
+    try {
+      refererOrigin = new URL(refererHeader).origin;
+    } catch {
+      refererOrigin = null;
+    }
   }
+
+  if (process.env.NODE_ENV !== 'production') {
+    return trustedOrigins;
+  }
+
+  if (originHeader && !isTrustedOrigin(originHeader)) {
+    console.warn(
+      `[auth] Rejected origin candidate "${originHeader}". trustedOrigins=${trustedOrigins.join(', ')}`
+    );
+  } else if (!originHeader && refererOrigin && !isTrustedOrigin(refererOrigin)) {
+    console.warn(
+      `[auth] Rejected referer origin candidate "${refererOrigin}". trustedOrigins=${trustedOrigins.join(', ')}`
+    );
+  }
+
+  return trustedOrigins;
 }
 
 export async function sendWorkspaceInviteEmail({
   email,
   role,
-  inviterName
+  inviterName,
+  temporaryPassword
 }: {
   email: string;
   role: string;
   inviterName?: string | null;
+  temporaryPassword?: string | null;
 }) {
   const inviteUrl = `${authBaseUrl}/auth/sign-in`;
   const inviterLabel = inviterName?.trim() || 'Quan tri he thong';
@@ -75,9 +95,16 @@ export async function sendWorkspaceInviteEmail({
           ${inviterLabel} da moi ban tham gia workspace quan ly nhan su voi vai tro <strong>${role}</strong>.
         </p>
         <p style="margin:0 0 20px;line-height:1.6">
-          Dang nhap bang email nay de nhan OTP va vao ngay workspace hien tai. Neu tai khoan chua ton tai,
-          he thong se tao tai khoan noi bo cho ban trong lan dang nhap dau tien.
+          Tai khoan noi bo cua ban da duoc cap san. Dang nhap bang email tai khoan va mat khau tam thoi de vao workspace hien tai.
         </p>
+        ${
+          temporaryPassword
+            ? `<div style="margin:0 0 20px;padding:16px 20px;background:#f3f4f6;border-radius:12px;line-height:1.8">
+                <div><strong>Tai khoan:</strong> ${email}</div>
+                <div><strong>Mat khau tam thoi:</strong> ${temporaryPassword}</div>
+              </div>`
+            : ''
+        }
         <a
           href="${inviteUrl}"
           style="display:inline-block;padding:12px 18px;border-radius:12px;background:#1d4ed8;color:#ffffff;text-decoration:none;font-weight:600"
@@ -95,6 +122,13 @@ export async function sendWorkspaceInviteEmail({
 export const auth = betterAuth({
   secret: authSecret,
   baseURL: authBaseUrl,
+  trustedOrigins: async (request) => resolveTrustedOrigins(request),
+  emailAndPassword: {
+    enabled: true,
+    disableSignUp: true,
+    minPasswordLength: 4,
+    maxPasswordLength: 128
+  },
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: { user, session, account, verification }
@@ -146,40 +180,7 @@ export const auth = betterAuth({
       }
     }
   },
-  plugins: [
-    nextCookies(),
-    emailOTP({
-      expiresIn: 300,
-      allowedAttempts: 5,
-      sendVerificationOnSignUp: true,
-      async sendVerificationOTP({ email, otp, type }) {
-        const message = formatOtpMail(type);
-
-        if (!resend) {
-          console.info(`[auth:otp] ${email} ${type} OTP=${otp}`);
-          return;
-        }
-
-        await resend.emails.send({
-          from: authFromEmail,
-          to: email,
-          subject: message.subject,
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111827">
-              <h2 style="margin:0 0 12px;font-size:20px">${message.heading}</h2>
-              <p style="margin:0 0 16px;line-height:1.6">${message.body}</p>
-              <div style="margin:20px 0;padding:16px 20px;background:#f3f4f6;border-radius:12px;font-size:28px;font-weight:700;letter-spacing:8px;text-align:center">
-                ${otp}
-              </div>
-              <p style="margin:0;color:#6b7280;line-height:1.6">
-                Ma co hieu luc trong 5 phut. Neu ban khong thuc hien yeu cau nay, co the bo qua email.
-              </p>
-            </div>
-          `
-        });
-      }
-    })
-  ]
+  plugins: [nextCookies()]
 });
 
 export type AuthSession = Awaited<ReturnType<typeof getAuthSession>>;

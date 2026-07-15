@@ -27,7 +27,7 @@ export function DataTable<TData>({
   return (
     <div className='flex flex-1 flex-col space-y-4'>
       {children}
-      <div className='overflow-hidden rounded-lg border'>
+      <div className='overflow-x-auto rounded-lg border'>
         <Table>
           <TableHeader className='bg-muted sticky top-0 z-10'>
             {table.getHeaderGroups().map((headerGroup) => (

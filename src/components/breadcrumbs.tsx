@@ -16,7 +16,7 @@ export function Breadcrumbs() {
   if (items.length === 0) return null;
 
   return (
-    <Breadcrumb>
+    <Breadcrumb data-tour='header-breadcrumbs'>
       <BreadcrumbList>
         {items.map((item, index) => (
           <Fragment key={item.title}>

@@ -23,7 +23,7 @@ export function SendButton({
   if (isPreview) {
     return (
       <Button size='sm' variant='ghost' disabled>
-        Preview
+        Bản preview
       </Button>
     );
   }

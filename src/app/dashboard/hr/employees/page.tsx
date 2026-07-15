@@ -136,17 +136,19 @@ export default async function EmployeesPage(props: PageProps) {
       pageTitle='Hồ sơ nhân viên'
       pageHeaderAction={
         canCreate ? (
-          <Link
-            href='/dashboard/hr/employees/create'
-            className={cn(buttonVariants(), 'text-xs md:text-sm')}
-          >
-            <Icons.add className='mr-2 h-4 w-4' /> Thêm nhân sự
-          </Link>
+          <div data-tour='employees-create'>
+            <Link
+              href='/dashboard/hr/employees/create'
+              className={cn(buttonVariants(), 'text-xs md:text-sm')}
+            >
+              <Icons.add className='mr-2 h-4 w-4' /> Thêm nhân sự
+            </Link>
+          </div>
         ) : undefined
       }
     >
       <div className='space-y-4'>
-        <div className='grid gap-3 md:grid-cols-4'>
+        <div className='grid gap-3 md:grid-cols-4' data-tour='employees-summary'>
           <SummaryCard
             label='Tổng nhân sự hiển thị'
             value={String(rows.length)}
@@ -169,7 +171,7 @@ export default async function EmployeesPage(props: PageProps) {
           />
         </div>
 
-        <div className='rounded-2xl border bg-card p-4'>
+        <div className='rounded-2xl border bg-card p-4' data-tour='employees-departments'>
           <div className='flex flex-wrap gap-2'>
             {departmentSummary.length > 0 ? (
               departmentSummary.map(([name, count]) => (
@@ -185,7 +187,10 @@ export default async function EmployeesPage(props: PageProps) {
           </div>
         </div>
 
-        <form className='grid gap-3 rounded-2xl border bg-card p-4 md:grid-cols-2 xl:grid-cols-4'>
+        <form
+          className='grid gap-3 rounded-2xl border bg-card p-4 md:grid-cols-2 xl:grid-cols-4'
+          data-tour='employees-filters'
+        >
           <div className='space-y-1.5'>
             <Label htmlFor='search'>Tìm nhân sự</Label>
             <input
@@ -257,11 +262,13 @@ export default async function EmployeesPage(props: PageProps) {
           </div>
         </form>
 
-        <SimpleTable
-          columns={columns}
-          rows={rows}
-          emptyText='Chưa có nhân sự phù hợp với bộ lọc hiện tại. Hãy đổi bộ lọc hoặc thêm nhân sự để tiếp tục demo.'
-        />
+        <div data-tour='employees-table'>
+          <SimpleTable
+            columns={columns}
+            rows={rows}
+            emptyText='Chưa có nhân sự phù hợp với bộ lọc hiện tại. Hãy đổi bộ lọc hoặc thêm nhân sự để tiếp tục demo.'
+          />
+        </div>
       </div>
     </PageContainer>
   );

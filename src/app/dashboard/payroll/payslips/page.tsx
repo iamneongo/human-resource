@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { buttonVariants } from '@/components/ui/button';
 import { departmentOptions, employeeOptions } from '@/features/hr/common/lookups';
 import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
+import { PayslipAccessCodeCell } from '@/features/hr/payroll/payslip-access-code-cell';
 import { listPayslips } from '@/features/hr/payroll/payslips';
 import { PayslipDetailDialog } from '@/features/hr/payroll/payslip-detail-dialog';
 import { listPayrollRuns } from '@/features/hr/payroll/runs';
@@ -74,16 +75,16 @@ export default async function PayslipsPage(props: PageProps) {
     },
     { header: 'Phòng ban', cell: (row) => row.departmentName ?? '—' },
     {
-      header: 'Loại snapshot',
+      header: 'Trạng thái phiếu',
       cell: (row) => (
         <Badge variant={row.isPreview ? 'outline' : 'default'}>
-          {row.isPreview ? 'Preview' : 'Chính thức'}
+          {row.isPreview ? 'Bản preview' : row.sentAt ? 'Đã phát hành nội bộ' : 'Bản chính thức'}
         </Badge>
       )
     },
     {
       header: 'Nguồn công',
-      cell: (row) => `${num(row.manualDays)} manual / ${num(row.timesheetDays)} timesheet`
+      cell: (row) => `${num(row.manualDays)} công thủ công / ${num(row.timesheetDays)} công máy`
     },
     { header: 'Số công', cell: (row) => `${num(row.workedDays)} công` },
     { header: 'Lương theo công', cell: (row) => vnd(row.salaryByAttendance) },
@@ -95,6 +96,16 @@ export default async function PayslipsPage(props: PageProps) {
     {
       header: 'Thực nhận',
       cell: (row) => <span className='font-semibold'>{vnd(row.netPay)}</span>
+    },
+    {
+      header: 'Mã xem ngoài app',
+      cell: (row) => (
+        <PayslipAccessCodeCell
+          code={row.publicAccessCode}
+          sent={Boolean(row.sentAt)}
+          isPreview={row.isPreview}
+        />
+      )
     },
     {
       header: 'Chi tiết',
@@ -109,7 +120,7 @@ export default async function PayslipsPage(props: PageProps) {
   return (
     <PageContainer pageTitle='Phiếu lương'>
       <div className='space-y-4'>
-        <div className='grid gap-3 md:grid-cols-4'>
+        <div className='grid gap-3 md:grid-cols-4' data-tour='payslips-summary'>
           <SummaryCard
             label='Tổng phiếu lương'
             value={filteredRows.length}
@@ -123,7 +134,7 @@ export default async function PayslipsPage(props: PageProps) {
           <SummaryCard
             label='Bản chính thức'
             value={filteredRows.filter((row) => !row.isPreview).length}
-            helper='Được phát hành nội bộ sau khi chốt'
+            helper='Tạo ra sau khi chốt bảng lương'
           />
           <SummaryCard
             label='Đã phát hành'
@@ -132,7 +143,15 @@ export default async function PayslipsPage(props: PageProps) {
           />
         </div>
 
-        <form className='grid gap-3 rounded-2xl border bg-card p-4 md:grid-cols-2 xl:grid-cols-4'>
+        <div className='rounded-2xl border bg-card p-4 text-sm'>
+          Bản preview chỉ để đối chiếu. Nhân viên chỉ xem được phiếu lương chính thức sau khi HR
+          phát hành nội bộ.
+        </div>
+
+        <form
+          className='grid gap-3 rounded-2xl border bg-card p-4 md:grid-cols-2 xl:grid-cols-4'
+          data-tour='payslips-filters'
+        >
           <div className='space-y-1.5'>
             <Label htmlFor='runId'>Kỳ lương</Label>
             <select
@@ -194,11 +213,13 @@ export default async function PayslipsPage(props: PageProps) {
           </div>
         </form>
 
-        <SimpleTable
-          columns={columns}
-          rows={filteredRows}
-          emptyText='Chưa có phiếu lương. Hãy tạo kỳ lương rồi preview hoặc chốt bảng lương trước.'
-        />
+        <div data-tour='payslips-table'>
+          <SimpleTable
+            columns={columns}
+            rows={filteredRows}
+            emptyText='Chưa có phiếu lương. Hãy tạo kỳ lương rồi preview hoặc chốt bảng lương trước.'
+          />
+        </div>
       </div>
     </PageContainer>
   );

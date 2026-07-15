@@ -48,6 +48,7 @@ jobs:
           CI: true
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          # Production canonical URL must be https://human-resource.apps.neooi.com
           BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           NEXT_PUBLIC_SENTRY_DISABLED: ${{ secrets.NEXT_PUBLIC_SENTRY_DISABLED }}
@@ -102,6 +103,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
+            # Production canonical URL must be https://human-resource.apps.neooi.com
             NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             BETTER_AUTH_URL=${{ secrets.BETTER_AUTH_URL }}

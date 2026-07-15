@@ -138,6 +138,7 @@ export const payslips = pgTable('payslips', {
   netPay: numeric('net_pay', { precision: 18, scale: 2 }).notNull(),
   // Chi tiết dòng lương để hiển thị/kiểm toán
   breakdown: jsonb('breakdown').$type<Record<string, number | string>>(),
+  publicAccessCode: text('public_access_code').unique(),
   sentAt: timestamp('sent_at', { withTimezone: true }),
   ...timestamps
 });

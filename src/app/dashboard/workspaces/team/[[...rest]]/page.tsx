@@ -39,7 +39,7 @@ export default async function TeamPage() {
         access={false}
         accessFallback={
           <div className='text-muted-foreground max-w-xl text-center text-base'>
-            Chỉ admin mới được mời thêm thành viên và quản lý workspace nội bộ hiện tại.
+            Chỉ admin mới được tạo tài khoản và quản lý workspace nội bộ hiện tại.
           </div>
         }
       >
@@ -55,14 +55,14 @@ export default async function TeamPage() {
       pageTitle='Thành viên workspace'
       pageHeaderAction={
         <EntityFormDialog
-          triggerLabel='Mời thành viên'
-          title='Mời thành viên vào workspace'
-          description='Thành viên được mời sẽ đăng nhập bằng OTP email và vào thẳng workspace hiện tại.'
+          triggerLabel='Tạo tài khoản thành viên'
+          title='Tạo hoặc cấp lại tài khoản nội bộ'
+          description='Admin cấp email đăng nhập, vai trò và mật khẩu tạm cho thành viên nội bộ.'
           action={inviteWorkspaceMember}
           fields={[
             {
               name: 'email',
-              label: 'Email thành viên',
+              label: 'Email tài khoản',
               type: 'email',
               required: true,
               placeholder: 'ten@congty.com'
@@ -73,10 +73,17 @@ export default async function TeamPage() {
               type: 'select',
               required: true,
               options: roleOptions
+            },
+            {
+              name: 'temporaryPassword',
+              label: 'Mật khẩu tạm',
+              type: 'password',
+              required: true,
+              placeholder: 'Nhập mật khẩu ban đầu'
             }
           ]}
           defaults={{ role: 'admin' }}
-          successMessage='Đã gửi lời mời thành viên'
+          successMessage='Đã cấp tài khoản nội bộ'
         />
       }
     >
@@ -93,9 +100,9 @@ export default async function TeamPage() {
             helper='Nhóm này có toàn quyền xem và thao tác dữ liệu.'
           />
           <SummaryCard
-            title='Lời mời chờ tham gia'
-            value={String(directory.summary.pendingInvitations)}
-            helper='Sẽ chuyển sang đã tham gia sau khi đăng nhập OTP lần đầu.'
+            title='Tài khoản đã cấp'
+            value={String(directory.summary.acceptedInvitations)}
+            helper='Có thể đăng nhập ngay bằng tài khoản và mật khẩu tạm.'
           />
         </div>
 
@@ -130,7 +137,7 @@ export default async function TeamPage() {
 
         <Card>
           <CardHeader className='pb-4'>
-            <CardTitle>Lời mời đã gửi</CardTitle>
+            <CardTitle>Lịch sử cấp tài khoản</CardTitle>
           </CardHeader>
           <CardContent className='overflow-x-auto'>
             <Table className='min-w-[880px]'>
@@ -139,8 +146,8 @@ export default async function TeamPage() {
                   <TableHead className='w-[280px]'>Email</TableHead>
                   <TableHead className='w-[180px]'>Vai trò</TableHead>
                   <TableHead className='w-[160px]'>Trạng thái</TableHead>
-                  <TableHead className='w-[180px]'>Lần gửi cuối</TableHead>
-                  <TableHead className='w-[180px]'>Đã tham gia lúc</TableHead>
+                  <TableHead className='w-[180px]'>Lần cập nhật cuối</TableHead>
+                  <TableHead className='w-[180px]'>Đã kích hoạt lúc</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -151,7 +158,7 @@ export default async function TeamPage() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={5} className='text-muted-foreground py-10 text-center'>
-                      Chưa có lời mời nào. Bạn có thể mời ngay thành viên từ nút phía trên.
+                      Chưa có tài khoản nào được cấp. Bạn có thể tạo ngay từ nút phía trên.
                     </TableCell>
                   </TableRow>
                 )}
@@ -204,7 +211,7 @@ function InvitationRow({ invitation }: { invitation: WorkspaceInvitation }) {
         {invitation.memberName ? (
           <div className='text-muted-foreground text-sm'>Đã gắn với {invitation.memberName}</div>
         ) : (
-          <div className='text-muted-foreground text-sm'>Chưa đăng nhập lần đầu</div>
+          <div className='text-muted-foreground text-sm'>Chưa gắn thành viên</div>
         )}
       </TableCell>
       <TableCell>
@@ -223,10 +230,10 @@ function InvitationRow({ invitation }: { invitation: WorkspaceInvitation }) {
           }
         >
           {invitation.status === 'accepted'
-            ? 'Đã tham gia'
+            ? 'Đã cấp'
             : invitation.status === 'revoked'
               ? 'Đã thu hồi'
-              : 'Chờ tham gia'}
+              : 'Chờ xử lý'}
         </Badge>
       </TableCell>
       <TableCell>{formatDate(invitation.updatedAt, { month: '2-digit' })}</TableCell>

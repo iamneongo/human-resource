@@ -75,3 +75,40 @@
   /* Apply the reveal animation */
   animation: reveal 0.4s ease-in-out forwards;
 }
+
+.driver-popover {
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: 0 24px 60px rgb(15 23 42 / 0.18);
+}
+
+.driver-popover-title {
+  color: var(--foreground);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.driver-popover-description,
+.driver-popover-progress-text {
+  color: var(--muted-foreground);
+}
+
+.driver-popover-footer button {
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  text-shadow: none;
+}
+
+.driver-popover-footer .driver-popover-next-btn {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.driver-popover-close-btn {
+  color: var(--muted-foreground);
+}

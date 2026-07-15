@@ -9,6 +9,7 @@ import { cookies } from 'next/headers';
 import NextTopLoader from 'nextjs-toploader';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import '../styles/globals.css';
+import 'driver.js/dist/driver.css';
 
 const META_THEME_COLORS = {
   light: '#ffffff',
@@ -18,7 +19,10 @@ const META_THEME_COLORS = {
 const appName = 'Nhân sự HRM';
 const appDescription =
   'Hệ thống quản lý nguồn nhân lực dành cho vận hành nhân sự, chấm công và tiền lương.';
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const PRODUCTION_CANONICAL_URL = 'https://human-resource.apps.neooi.com';
+const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.NODE_ENV === 'production' ? PRODUCTION_CANONICAL_URL : 'http://localhost:3000');
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),

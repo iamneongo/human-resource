@@ -184,42 +184,44 @@ export default async function ContractsPage() {
       pageTitle='Hợp đồng lao động'
       pageHeaderAction={
         canCreate ? (
-          <CreateContractFlowDialog
-            triggerLabel='Thêm hợp đồng'
-            title='Thêm hợp đồng lao động'
-            action={createContract}
-            fields={[
-              {
-                name: 'employeeId',
-                label: 'Nhân sự',
-                type: 'select',
-                options: employeeSelectOptions,
-                required: true,
-                colSpan: 2
-              },
-              { name: 'contractNumber', label: 'Số hợp đồng', required: true },
-              {
-                name: 'type',
-                label: 'Loại hợp đồng',
-                type: 'select',
-                required: true,
-                options: Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))
-              },
-              { name: 'startDate', label: 'Ngày bắt đầu', type: 'date', required: true },
-              { name: 'endDate', label: 'Ngày kết thúc', type: 'date' },
-              {
-                name: 'baseSalary',
-                label: 'Lương cơ bản (₫)',
-                type: 'number',
-                required: true
-              }
-            ]}
-          />
+          <div data-tour='contracts-create'>
+            <CreateContractFlowDialog
+              triggerLabel='Thêm hợp đồng'
+              title='Thêm hợp đồng lao động'
+              action={createContract}
+              fields={[
+                {
+                  name: 'employeeId',
+                  label: 'Nhân sự',
+                  type: 'select',
+                  options: employeeSelectOptions,
+                  required: true,
+                  colSpan: 2
+                },
+                { name: 'contractNumber', label: 'Số hợp đồng', required: true },
+                {
+                  name: 'type',
+                  label: 'Loại hợp đồng',
+                  type: 'select',
+                  required: true,
+                  options: Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))
+                },
+                { name: 'startDate', label: 'Ngày bắt đầu', type: 'date', required: true },
+                { name: 'endDate', label: 'Ngày kết thúc', type: 'date' },
+                {
+                  name: 'baseSalary',
+                  label: 'Lương cơ bản (₫)',
+                  type: 'number',
+                  required: true
+                }
+              ]}
+            />
+          </div>
         ) : undefined
       }
     >
       <div className='space-y-4'>
-        <div className='grid gap-3 md:grid-cols-5'>
+        <div className='grid gap-3 md:grid-cols-5' data-tour='contracts-summary'>
           <SummaryCard
             label='Tổng hợp đồng'
             value={overview.totalContracts}
@@ -247,11 +249,13 @@ export default async function ContractsPage() {
           />
         </div>
 
-        <SimpleTable
-          columns={columns}
-          rows={rows}
-          emptyText='Chưa có hợp đồng nào. Hãy thêm hợp đồng đầu tiên để bắt đầu quản lý hồ sơ lao động.'
-        />
+        <div data-tour='contracts-table'>
+          <SimpleTable
+            columns={columns}
+            rows={rows}
+            emptyText='Chưa có hợp đồng nào. Hãy thêm hợp đồng đầu tiên để bắt đầu quản lý hồ sơ lao động.'
+          />
+        </div>
       </div>
     </PageContainer>
   );

@@ -183,7 +183,7 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
           <div>
             <CardTitle>Trạng thái nhân sự</CardTitle>
           </div>
-          {chartBadge('Live headcount')}
+          {chartBadge('Theo trạng thái hồ sơ')}
         </CardHeader>
         <CardContent className='pb-4'>
           {statusData.length ? (

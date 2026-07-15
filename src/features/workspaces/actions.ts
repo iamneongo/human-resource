@@ -1,10 +1,13 @@
 'use server';
 
+import { randomUUID } from 'node:crypto';
+
 import { revalidatePath } from 'next/cache';
-import { asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
+import { hashPassword } from 'better-auth/crypto';
 
 import { db } from '@/db';
-import { user, workspaceInvitations } from '@/db/schema';
+import { account, user, workspaceInvitations } from '@/db/schema';
 import { getAuthSession, sendWorkspaceInviteEmail } from '@/lib/auth';
 import { HRM_ROLES, isHrmRole, requireRole } from '@/lib/rbac';
 
@@ -48,6 +51,11 @@ function normalizeRole(value: string) {
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
+}
+
+function getDisplayNameFromEmail(email: string) {
+  const localPart = email.split('@')[0]?.trim();
+  return localPart ? localPart.replace(/[._-]+/g, ' ') : 'Tai khoan noi bo';
 }
 
 export async function getWorkspaceDirectory(): Promise<WorkspaceDirectory> {
@@ -117,14 +125,15 @@ export async function inviteWorkspaceMember(
   try {
     await requireRole('admin');
   } catch {
-    return { ok: false, error: 'Chỉ admin mới được mời thêm thành viên vào workspace.' };
+    return { ok: false, error: 'Chỉ admin mới được tạo tài khoản thành viên nội bộ.' };
   }
 
   const email = normalizeEmail(values.email ?? '');
   const role = normalizeRole(values.role ?? '');
+  const temporaryPassword = values.temporaryPassword?.trim() ?? '';
 
   if (!email || !email.includes('@')) {
-    return { ok: false, error: 'Vui lòng nhập đúng email thành viên.' };
+    return { ok: false, error: 'Vui lòng nhập đúng email tài khoản.' };
   }
 
   if (!role) {
@@ -134,12 +143,16 @@ export async function inviteWorkspaceMember(
     };
   }
 
+  if (temporaryPassword.length < 4) {
+    return { ok: false, error: 'Mật khẩu tạm phải có ít nhất 4 ký tự.' };
+  }
+
   const session = await getAuthSession();
   const inviterId = session?.user?.id ?? null;
   const inviterName = session?.user?.name ?? null;
 
   try {
-    const [existingMember] = await db
+    let [existingMember] = await db
       .select({
         id: user.id
       })
@@ -151,9 +164,53 @@ export async function inviteWorkspaceMember(
       await db
         .update(user)
         .set({
-          role
+          role,
+          updatedAt: new Date()
         })
         .where(eq(user.id, existingMember.id));
+    } else {
+      const createdAt = new Date();
+      const newUserId = randomUUID();
+      await db.insert(user).values({
+        id: newUserId,
+        name: getDisplayNameFromEmail(email),
+        email,
+        emailVerified: true,
+        role,
+        createdAt,
+        updatedAt: createdAt
+      });
+      existingMember = { id: newUserId };
+    }
+
+    const passwordHash = await hashPassword(temporaryPassword);
+    const [existingPasswordAccount] = await db
+      .select({ id: account.id })
+      .from(account)
+      .where(and(eq(account.userId, existingMember.id), eq(account.providerId, 'credential')))
+      .limit(1);
+
+    if (existingPasswordAccount) {
+      await db
+        .update(account)
+        .set({
+          accountId: email,
+          providerId: 'credential',
+          password: passwordHash,
+          updatedAt: new Date()
+        })
+        .where(eq(account.id, existingPasswordAccount.id));
+    } else {
+      const createdAt = new Date();
+      await db.insert(account).values({
+        id: randomUUID(),
+        accountId: email,
+        providerId: 'credential',
+        userId: existingMember.id,
+        password: passwordHash,
+        createdAt,
+        updatedAt: createdAt
+      });
     }
 
     const [existingInvitation] = await db
@@ -169,25 +226,26 @@ export async function inviteWorkspaceMember(
         .update(workspaceInvitations)
         .set({
           role,
-          status: existingMember ? 'accepted' : 'pending',
+          status: 'accepted',
           invitedByUserId: inviterId,
-          acceptedAt: existingMember ? new Date() : null
+          acceptedAt: new Date()
         })
         .where(eq(workspaceInvitations.id, existingInvitation.id));
     } else {
       await db.insert(workspaceInvitations).values({
         email,
         role,
-        status: existingMember ? 'accepted' : 'pending',
+        status: 'accepted',
         invitedByUserId: inviterId,
-        acceptedAt: existingMember ? new Date() : null
+        acceptedAt: new Date()
       });
     }
 
     await sendWorkspaceInviteEmail({
       email,
       role,
-      inviterName
+      inviterName,
+      temporaryPassword
     });
 
     revalidatePath('/dashboard/workspaces/team');
@@ -202,8 +260,7 @@ export async function inviteWorkspaceMember(
   } catch (error) {
     return {
       ok: false,
-      error:
-        error instanceof Error ? error.message : 'Không thể gửi lời mời thành viên vào workspace.'
+      error: error instanceof Error ? error.message : 'Không thể tạo tài khoản thành viên nội bộ.'
     };
   }
 }

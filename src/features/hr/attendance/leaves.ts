@@ -1,14 +1,46 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, lte, or, sql } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { departments, employees, leaveBalances, leaveRequests } from '@/db/schema';
-import { getCurrentEmployeeId, requireRole } from '@/lib/rbac';
+import { getCurrentEmployeeId, getCurrentRole, requireRole, roleAtLeast } from '@/lib/rbac';
 
 type Result = { ok: true } | { ok: false; error: string };
+
 const LEAVE_STATUSES = ['draft', 'pending', 'approved', 'rejected', 'cancelled'] as const;
+const TYPES = ['annual', 'sick', 'maternity', 'unpaid', 'other'] as const;
+
+function normalizeReason(value: string | undefined) {
+  const normalized = value?.trim() ?? '';
+  return normalized.length > 0 ? normalized : null;
+}
+
+function getDateRangeDays(startDate: string, endDate: string) {
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  const days = Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
+
+  return { start, end, days };
+}
+
+async function hasOverlappingLeave(employeeId: string, startDate: string, endDate: string) {
+  const rows = await db
+    .select({ id: leaveRequests.id })
+    .from(leaveRequests)
+    .where(
+      and(
+        eq(leaveRequests.employeeId, employeeId),
+        or(eq(leaveRequests.status, 'pending'), eq(leaveRequests.status, 'approved')),
+        lte(leaveRequests.startDate, endDate),
+        gte(leaveRequests.endDate, startDate)
+      )
+    )
+    .limit(1);
+
+  return rows.length > 0;
+}
 
 export async function listLeaves(filters?: {
   onlyEmployeeId?: string;
@@ -31,8 +63,12 @@ export async function listLeaves(filters?: {
       days: leaveRequests.days,
       reason: leaveRequests.reason,
       status: leaveRequests.status,
+      approverId: leaveRequests.approverId,
+      createdAt: leaveRequests.createdAt,
+      updatedAt: leaveRequests.updatedAt,
       employeeName: employees.fullName,
       employeeCode: employees.employeeCode,
+      departmentId: employees.departmentId,
       departmentName: departments.name,
       entitledDays: leaveBalances.entitledDays,
       usedDays: leaveBalances.usedDays,
@@ -73,22 +109,34 @@ export async function listLeaves(filters?: {
     .limit(300);
 }
 
-const TYPES = ['annual', 'sick', 'maternity', 'unpaid', 'other'] as const;
-
 export async function createLeave(v: Record<string, string>): Promise<Result> {
   await requireRole('employee');
+
   const employeeId = v.employeeId || (await getCurrentEmployeeId());
-  if (!employeeId) return { ok: false, error: 'Không xác định được nhân sự.' };
-  if (!v.type || !v.startDate || !v.endDate)
+  if (!employeeId) {
+    return { ok: false, error: 'Không xác định được nhân sự.' };
+  }
+  if (!v.type || !v.startDate || !v.endDate) {
     return { ok: false, error: 'Thiếu thông tin bắt buộc.' };
+  }
+
   const type = TYPES.includes(v.type as (typeof TYPES)[number])
     ? (v.type as (typeof TYPES)[number])
     : 'annual';
+  const { start, end, days } = getDateRangeDays(v.startDate, v.endDate);
 
-  const start = new Date(v.startDate);
-  const end = new Date(v.endDate);
-  const days = Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
-  if (days <= 0) return { ok: false, error: 'Khoảng ngày không hợp lệ.' };
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return { ok: false, error: 'Ngày nghỉ phép không hợp lệ.' };
+  }
+  if (days <= 0) {
+    return { ok: false, error: 'Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.' };
+  }
+  if (await hasOverlappingLeave(employeeId, v.startDate, v.endDate)) {
+    return {
+      ok: false,
+      error: 'Nhân sự đã có đơn nghỉ chờ duyệt hoặc đã duyệt trùng khoảng ngày này.'
+    };
+  }
 
   try {
     await db.insert(leaveRequests).values({
@@ -97,13 +145,17 @@ export async function createLeave(v: Record<string, string>): Promise<Result> {
       startDate: v.startDate,
       endDate: v.endDate,
       days: String(days),
-      reason: v.reason || null,
+      reason: normalizeReason(v.reason),
       status: 'pending'
     });
+
     revalidatePath('/dashboard/attendance/leaves');
     return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Lỗi' };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'Không tạo được đơn nghỉ.'
+    };
   }
 }
 
@@ -113,20 +165,26 @@ export async function approveLeave(id: string): Promise<Result> {
   } catch {
     return { ok: false, error: 'Chỉ quản lý trở lên được phê duyệt.' };
   }
-  const approverId = await getCurrentEmployeeId();
 
+  const approverId = await getCurrentEmployeeId();
   const [leave] = await db.select().from(leaveRequests).where(eq(leaveRequests.id, id)).limit(1);
-  if (!leave) return { ok: false, error: 'Không tìm thấy đơn.' };
-  if (leave.status !== 'pending') return { ok: false, error: 'Đơn đã được xử lý.' };
+
+  if (!leave) {
+    return { ok: false, error: 'Không tìm thấy đơn.' };
+  }
+  if (leave.status !== 'pending') {
+    return { ok: false, error: 'Đơn đã được xử lý.' };
+  }
 
   if (leave.type === 'annual') {
     const year = new Date(leave.startDate).getFullYear();
-    const [bal] = await db
+    const [balance] = await db
       .select()
       .from(leaveBalances)
       .where(and(eq(leaveBalances.employeeId, leave.employeeId), eq(leaveBalances.year, year)))
       .limit(1);
-    const remaining = bal ? Number(bal.entitledDays) - Number(bal.usedDays) : 0;
+
+    const remaining = balance ? Number(balance.entitledDays) - Number(balance.usedDays) : 0;
     if (Number(leave.days) > remaining) {
       return {
         ok: false,
@@ -161,6 +219,7 @@ export async function approveLeave(id: string): Promise<Result> {
 
   revalidatePath('/dashboard/attendance/leaves');
   revalidatePath('/dashboard/attendance/leave-balances');
+  revalidatePath('/dashboard/attendance/timesheets');
   return { ok: true };
 }
 
@@ -170,7 +229,34 @@ export async function rejectLeave(id: string): Promise<Result> {
   } catch {
     return { ok: false, error: 'Chỉ quản lý trở lên được phê duyệt.' };
   }
+
   await db.update(leaveRequests).set({ status: 'rejected' }).where(eq(leaveRequests.id, id));
+  revalidatePath('/dashboard/attendance/leaves');
+  return { ok: true };
+}
+
+export async function cancelLeave(id: string): Promise<Result> {
+  try {
+    await requireRole('employee');
+  } catch {
+    return { ok: false, error: 'Bạn cần đăng nhập để hủy đơn nghỉ.' };
+  }
+
+  const role = await getCurrentRole();
+  const currentEmployeeId = await getCurrentEmployeeId();
+  const [leave] = await db.select().from(leaveRequests).where(eq(leaveRequests.id, id)).limit(1);
+
+  if (!leave) {
+    return { ok: false, error: 'Không tìm thấy đơn nghỉ.' };
+  }
+  if (!roleAtLeast(role, 'manager') && leave.employeeId !== currentEmployeeId) {
+    return { ok: false, error: 'Bạn chỉ được hủy đơn nghỉ do chính mình tạo.' };
+  }
+  if (!['draft', 'pending'].includes(leave.status)) {
+    return { ok: false, error: 'Chỉ hủy được đơn nghỉ ở trạng thái nháp hoặc chờ duyệt.' };
+  }
+
+  await db.update(leaveRequests).set({ status: 'cancelled' }).where(eq(leaveRequests.id, id));
   revalidatePath('/dashboard/attendance/leaves');
   return { ok: true };
 }

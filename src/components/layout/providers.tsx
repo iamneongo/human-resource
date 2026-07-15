@@ -2,6 +2,7 @@
 import React from 'react';
 import { ActiveThemeProvider } from '../themes/active-theme';
 import QueryProvider from './query-provider';
+import { TourProvider } from '@/features/tours/tour-provider';
 
 export default function Providers({
   activeThemeValue,
@@ -13,7 +14,9 @@ export default function Providers({
   return (
     <>
       <ActiveThemeProvider initialTheme={activeThemeValue}>
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <TourProvider>{children}</TourProvider>
+        </QueryProvider>
       </ActiveThemeProvider>
     </>
   );

@@ -75,56 +75,61 @@ export default async function StaffingTrackingPage(props: PageProps) {
       pageDescription='Theo dõi số người cần, số người đi làm thực tế và forecast chi phí lương theo từng ngày, bộ phận và ca làm việc.'
       pageHeaderAction={
         canEdit ? (
-          <EntityFormDialog
-            triggerLabel='Khai báo định biên'
-            title='Khai báo định biên theo ngày'
-            description='Dùng để nhập số người chuẩn cần có cho một bộ phận trong một ca làm việc cụ thể.'
-            action={upsertDailyStaffingTarget}
-            fields={[
-              { name: 'workDate', label: 'Ngày', type: 'date', required: true },
-              {
-                name: 'departmentId',
-                label: 'Bộ phận',
-                type: 'select',
-                required: true,
-                options: departments
-              },
-              {
-                name: 'shiftId',
-                label: 'Ca làm việc',
-                type: 'select',
-                required: true,
-                options: shifts.map((shift) => ({
-                  value: shift.id,
-                  label: `${shift.code} · ${shift.name}`
-                }))
-              },
-              {
-                name: 'targetHeadcount',
-                label: 'Định biên',
-                type: 'number',
-                required: true
-              },
-              {
-                name: 'note',
-                label: 'Ghi chú',
-                type: 'textarea',
-                colSpan: 2
-              }
-            ]}
-            defaults={{
-              workDate: tracking.filters.dateFrom,
-              departmentId: tracking.filters.departmentId,
-              shiftId: tracking.filters.shiftId,
-              targetHeadcount: '0'
-            }}
-            successMessage='Đã lưu định biên ngày'
-          />
+          <div data-tour='staffing-create'>
+            <EntityFormDialog
+              triggerLabel='Khai báo định biên'
+              title='Khai báo định biên theo ngày'
+              description='Dùng để nhập số người chuẩn cần có cho một bộ phận trong một ca làm việc cụ thể.'
+              action={upsertDailyStaffingTarget}
+              fields={[
+                { name: 'workDate', label: 'Ngày', type: 'date', required: true },
+                {
+                  name: 'departmentId',
+                  label: 'Bộ phận',
+                  type: 'select',
+                  required: true,
+                  options: departments
+                },
+                {
+                  name: 'shiftId',
+                  label: 'Ca làm việc',
+                  type: 'select',
+                  required: true,
+                  options: shifts.map((shift) => ({
+                    value: shift.id,
+                    label: `${shift.code} · ${shift.name}`
+                  }))
+                },
+                {
+                  name: 'targetHeadcount',
+                  label: 'Định biên',
+                  type: 'number',
+                  required: true
+                },
+                {
+                  name: 'note',
+                  label: 'Ghi chú',
+                  type: 'textarea',
+                  colSpan: 2
+                }
+              ]}
+              defaults={{
+                workDate: tracking.filters.dateFrom,
+                departmentId: tracking.filters.departmentId,
+                shiftId: tracking.filters.shiftId,
+                targetHeadcount: '0'
+              }}
+              successMessage='Đã lưu định biên ngày'
+            />
+          </div>
         ) : undefined
       }
     >
       <div className='space-y-6'>
-        <form className='grid gap-3 rounded-2xl border bg-card p-4 md:grid-cols-[1fr_1fr_1fr_1fr_auto] md:items-end'>
+        <form
+          className='grid gap-3 rounded-2xl border bg-card p-4 md:grid-cols-[1fr_1fr_1fr_1fr_auto] md:items-end'
+          data-tour='staffing-filters'
+        >
           <div className='space-y-1.5'>
             <Label htmlFor='dateFrom'>Từ ngày</Label>
             <Input
@@ -163,7 +168,7 @@ export default async function StaffingTrackingPage(props: PageProps) {
           </div>
         </form>
 
-        <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-5'>
+        <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-5' data-tour='staffing-summary'>
           <SummaryCard
             title='Bộ phận theo dõi'
             value={formatNumber(tracking.summary.departmentsTracked)}
@@ -191,7 +196,7 @@ export default async function StaffingTrackingPage(props: PageProps) {
           />
         </div>
 
-        <div className='rounded-2xl border bg-card p-4'>
+        <div className='rounded-2xl border bg-card p-4' data-tour='staffing-table'>
           <div className='flex flex-col gap-2 md:flex-row md:items-center md:justify-between'>
             <div>
               <h2 className='text-base font-semibold'>Bảng định biên theo ngày</h2>

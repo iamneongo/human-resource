@@ -1145,6 +1145,9 @@ async function seedPayrollModules(employeesBase: EmployeeSeedRow[]) {
           manualDays: index % 7 === 0 ? 1 : 0,
           timesheetDays: workedDays - (index % 7 === 0 ? 1 : 0)
         },
+        publicAccessCode: isPreview
+          ? null
+          : `PL-${run.period.replace('-', '')}-${employee.employeeCode}`,
         sentAt: isPreview ? null : new Date()
       });
     }

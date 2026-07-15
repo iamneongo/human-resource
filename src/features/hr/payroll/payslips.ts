@@ -1,11 +1,13 @@
 'use server';
 
+import { randomUUID } from 'node:crypto';
+
 import { revalidatePath } from 'next/cache';
-import { desc, eq, ne } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, ne } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { departments, employees, payrollRuns, payslips } from '@/db/schema';
-import { requireRole } from '@/lib/rbac';
+import { getCurrentEmployeeId, requireRole } from '@/lib/rbac';
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -25,13 +27,76 @@ type PayslipBreakdown = {
   timesheetDays?: number;
 };
 
+type PayslipRow = {
+  id: string;
+  payrollRunId: string;
+  employeeId: string;
+  period: string | null;
+  runStatus: string | null;
+  employeeName: string | null;
+  employeeCode: string | null;
+  departmentId: string | null;
+  departmentName: string | null;
+  isPreview: boolean;
+  baseSalary: string;
+  allowances: string;
+  overtimePay: string;
+  grossPay: string;
+  insuranceDeduction: string;
+  taxDeduction: string;
+  otherDeduction: string;
+  netPay: string;
+  breakdown: Record<string, number | string> | null;
+  publicAccessCode: string | null;
+  sentAt: Date | null;
+};
+
 function getBreakdown(value: unknown): PayslipBreakdown {
   return value && typeof value === 'object' ? (value as PayslipBreakdown) : {};
 }
 
-export async function listPayslips(runId?: string) {
-  await requireRole('hr');
-  const query = db
+function normalizeAccessCode(code: string) {
+  return code.trim().toUpperCase();
+}
+
+async function generateUniquePayslipAccessCode() {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const code = normalizeAccessCode(`PL-${randomUUID().replace(/-/g, '').slice(0, 10)}`);
+    const [existing] = await db
+      .select({ id: payslips.id })
+      .from(payslips)
+      .where(eq(payslips.publicAccessCode, code))
+      .limit(1);
+
+    if (!existing) {
+      return code;
+    }
+  }
+
+  return normalizeAccessCode(`PL-${Date.now().toString(36)}-${randomUUID().slice(0, 4)}`);
+}
+
+function toPayslipView(row: PayslipRow) {
+  const breakdown = getBreakdown(row.breakdown);
+  return {
+    ...row,
+    monthlyBaseSalary: breakdown.monthlyBaseSalary ?? Number(row.baseSalary),
+    salaryPerDay: breakdown.salaryPerDay ?? 0,
+    workedDays: breakdown.workedDays ?? 0,
+    workedHours: breakdown.workedHours ?? 0,
+    paidHours: breakdown.paidHours ?? 0,
+    salaryByAttendance: breakdown.salaryByAttendance ?? Number(row.baseSalary),
+    fixedAllowance: breakdown.fixedAllowance ?? Number(row.allowances),
+    overtimeHours: breakdown.overtimeHours ?? 0,
+    otherAdjustments: breakdown.otherAdjustments ?? 0,
+    manualDays: breakdown.manualDays ?? 0,
+    timesheetDays: breakdown.timesheetDays ?? 0,
+    snapshotType: breakdown.snapshotType ?? (row.isPreview ? 'preview' : 'locked')
+  };
+}
+
+function getPayslipRows() {
+  return db
     .select({
       id: payslips.id,
       payrollRunId: payslips.payrollRunId,
@@ -52,34 +117,43 @@ export async function listPayslips(runId?: string) {
       otherDeduction: payslips.otherDeduction,
       netPay: payslips.netPay,
       breakdown: payslips.breakdown,
+      publicAccessCode: payslips.publicAccessCode,
       sentAt: payslips.sentAt
     })
     .from(payslips)
     .leftJoin(employees, eq(payslips.employeeId, employees.id))
     .leftJoin(departments, eq(employees.departmentId, departments.id))
-    .leftJoin(payrollRuns, eq(payslips.payrollRunId, payrollRuns.id))
-    .orderBy(desc(payrollRuns.period))
-    .limit(500);
+    .leftJoin(payrollRuns, eq(payslips.payrollRunId, payrollRuns.id));
+}
+
+export async function listPayslips(runId?: string) {
+  await requireRole('hr');
+  const query = getPayslipRows().orderBy(desc(payrollRuns.period)).limit(500);
 
   const rows = runId ? await query.where(eq(payslips.payrollRunId, runId)) : await query;
-  return rows.map((row) => {
-    const breakdown = getBreakdown(row.breakdown);
-    return {
-      ...row,
-      monthlyBaseSalary: breakdown.monthlyBaseSalary ?? Number(row.baseSalary),
-      salaryPerDay: breakdown.salaryPerDay ?? 0,
-      workedDays: breakdown.workedDays ?? 0,
-      workedHours: breakdown.workedHours ?? 0,
-      paidHours: breakdown.paidHours ?? 0,
-      salaryByAttendance: breakdown.salaryByAttendance ?? Number(row.baseSalary),
-      fixedAllowance: breakdown.fixedAllowance ?? Number(row.allowances),
-      overtimeHours: breakdown.overtimeHours ?? 0,
-      otherAdjustments: breakdown.otherAdjustments ?? 0,
-      manualDays: breakdown.manualDays ?? 0,
-      timesheetDays: breakdown.timesheetDays ?? 0,
-      snapshotType: breakdown.snapshotType ?? (row.isPreview ? 'preview' : 'locked')
-    };
-  });
+  return rows.map(toPayslipView);
+}
+
+export async function listMyPublishedPayslips(runId?: string) {
+  await requireRole('employee');
+  const employeeId = await getCurrentEmployeeId();
+  if (!employeeId) {
+    return [];
+  }
+
+  const rows = await getPayslipRows()
+    .where(
+      and(
+        eq(payslips.employeeId, employeeId),
+        eq(payslips.isPreview, false),
+        isNotNull(payslips.sentAt),
+        runId ? eq(payslips.payrollRunId, runId) : undefined
+      )
+    )
+    .orderBy(desc(payrollRuns.period))
+    .limit(100);
+
+  return rows.map(toPayslipView);
 }
 
 export async function sendPayslip(id: string): Promise<Result> {
@@ -90,7 +164,10 @@ export async function sendPayslip(id: string): Promise<Result> {
   }
 
   const [row] = await db
-    .select({ isPreview: payslips.isPreview })
+    .select({
+      isPreview: payslips.isPreview,
+      publicAccessCode: payslips.publicAccessCode
+    })
     .from(payslips)
     .where(eq(payslips.id, id))
     .limit(1);
@@ -100,9 +177,35 @@ export async function sendPayslip(id: string): Promise<Result> {
     return { ok: false, error: 'Không thể phát hành nội bộ cho phiếu lương preview.' };
   }
 
-  await db.update(payslips).set({ sentAt: new Date() }).where(eq(payslips.id, id));
+  await db
+    .update(payslips)
+    .set({
+      sentAt: new Date(),
+      publicAccessCode: row.publicAccessCode ?? (await generateUniquePayslipAccessCode())
+    })
+    .where(eq(payslips.id, id));
+
   revalidatePath('/dashboard/payroll/payslips');
   return { ok: true };
+}
+
+export async function getPublicPayslipByAccessCode(code: string) {
+  const normalizedCode = normalizeAccessCode(code);
+  if (!normalizedCode) {
+    return null;
+  }
+
+  const [row] = await getPayslipRows()
+    .where(
+      and(
+        eq(payslips.publicAccessCode, normalizedCode),
+        eq(payslips.isPreview, false),
+        isNotNull(payslips.sentAt)
+      )
+    )
+    .limit(1);
+
+  return row ? toPayslipView(row) : null;
 }
 
 export async function payrollReport() {
