@@ -25,9 +25,9 @@ export function DataTable<TData>({
   children
 }: DataTableProps<TData>) {
   return (
-    <div className='flex flex-1 flex-col space-y-4'>
+    <div className='flex min-w-0 flex-1 flex-col space-y-4'>
       {children}
-      <div className='overflow-x-auto rounded-lg border'>
+      <div className='min-w-0 rounded-lg border'>
         <Table>
           <TableHeader className='bg-muted sticky top-0 z-10'>
             {table.getHeaderGroups().map((headerGroup) => (

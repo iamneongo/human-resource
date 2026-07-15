@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { ConfirmActionButton } from '@/features/hr/common/confirm-action-button';
 
 import { approvePayrollRun, computeAndLockRun, previewPayrollRun } from './runs';
 
@@ -52,26 +53,32 @@ export function RunActions({ id, status }: { id: string; status: string }) {
         >
           {pending ? '...' : 'Preview lại'}
         </Button>
-        <Button
-          size='sm'
+        <ConfirmActionButton
+          title='Xác nhận chốt bảng lương'
+          description='Kỳ lương này sẽ được chốt theo dữ liệu hiện tại để chuyển sang bước duyệt.'
+          confirmLabel='Chốt bảng lương'
+          pendingLabel='Đang chốt...'
+          successMessage='Đã chốt bảng lương'
+          action={() => computeAndLockRun(id)}
+          triggerLabel='Chốt bảng lương'
           disabled={pending}
-          onClick={() => run(computeAndLockRun, 'Đã chốt bảng lương')}
-        >
-          {pending ? '...' : 'Chốt bảng lương'}
-        </Button>
+        />
       </div>
     );
   }
 
   if (status === 'locked') {
     return (
-      <Button
-        size='sm'
+      <ConfirmActionButton
+        title='Xác nhận duyệt bảng lương'
+        description='Sau khi duyệt, kỳ lương sẽ trở thành dữ liệu chính thức để phát hành nội bộ.'
+        confirmLabel='Duyệt bảng lương'
+        pendingLabel='Đang duyệt...'
+        successMessage='Đã duyệt bảng lương'
+        action={() => approvePayrollRun(id)}
+        triggerLabel='Duyệt bảng lương'
         disabled={pending}
-        onClick={() => run(approvePayrollRun, 'Đã duyệt bảng lương')}
-      >
-        {pending ? '...' : 'Duyệt bảng lương'}
-      </Button>
+      />
     );
   }
 

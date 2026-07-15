@@ -1,17 +1,9 @@
 'use client';
 
-import { useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-
-import { Button } from '@/components/ui/button';
+import { ConfirmActionButton } from '@/features/hr/common/confirm-action-button';
 
 type Result = { ok: true } | { ok: false; error: string };
 
-/**
- * Nút duyệt / từ chối cho các bản ghi chờ phê duyệt (OT, nghỉ phép, điều chỉnh).
- * `approve`/`reject` là Server Actions truyền từ trang.
- */
 export function ApprovalActions({
   id,
   status,
@@ -23,43 +15,32 @@ export function ApprovalActions({
   approve: (id: string) => Promise<Result>;
   reject: (id: string) => Promise<Result>;
 }) {
-  const [pending, startTransition] = useTransition();
-  const router = useRouter();
-
   if (status !== 'pending') {
     return null;
   }
 
-  function run(fn: (id: string) => Promise<Result>, okMsg: string) {
-    startTransition(async () => {
-      const res = await fn(id);
-      if (res.ok) {
-        toast.success(okMsg);
-        router.refresh();
-      } else {
-        toast.error(res.error);
-      }
-    });
-  }
-
   return (
     <div className='flex gap-2'>
-      <Button
-        size='sm'
-        variant='outline'
-        disabled={pending}
-        onClick={() => run(approve, 'Đã duyệt')}
-      >
-        Duyệt
-      </Button>
-      <Button
-        size='sm'
-        variant='ghost'
-        disabled={pending}
-        onClick={() => run(reject, 'Đã từ chối')}
-      >
-        Từ chối
-      </Button>
+      <ConfirmActionButton
+        title='Xác nhận duyệt'
+        description='Bản ghi này sẽ được chuyển sang trạng thái đã duyệt và ảnh hưởng tới số liệu liên quan.'
+        confirmLabel='Duyệt'
+        pendingLabel='Đang duyệt...'
+        successMessage='Đã duyệt'
+        action={() => approve(id)}
+        triggerLabel='Duyệt'
+        triggerVariant='outline'
+      />
+      <ConfirmActionButton
+        title='Xác nhận từ chối'
+        description='Bản ghi này sẽ được chuyển sang trạng thái từ chối.'
+        confirmLabel='Từ chối'
+        pendingLabel='Đang từ chối...'
+        successMessage='Đã từ chối'
+        action={() => reject(id)}
+        triggerLabel='Từ chối'
+        triggerVariant='ghost'
+      />
     </div>
   );
 }

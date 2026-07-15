@@ -6,17 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table';
 import { ConfirmDeleteDialog } from '@/features/hr/common/confirm-delete-dialog';
 import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
 import { departmentOptions } from '@/features/hr/common/lookups';
+import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
 import {
   deleteDailyStaffingTarget,
   getDailyStaffingTracking,
@@ -69,10 +62,156 @@ export default async function StaffingTrackingPage(props: PageProps) {
     listShifts()
   ]);
 
+  const shiftOptions = shifts.map((shift) => ({
+    value: shift.id,
+    label: `${shift.code} · ${shift.name}`
+  }));
+
+  const columns: Column<(typeof tracking.rows)[number]>[] = [
+    {
+      header: 'Ngày',
+      cell: (row) => <div className='min-w-[110px] font-medium'>{row.workDate}</div>
+    },
+    {
+      header: 'Bộ phận',
+      cell: (row) => <div className='min-w-[220px] whitespace-normal'>{row.departmentName}</div>
+    },
+    {
+      header: 'Ca',
+      cell: (row) => (
+        <div className='min-w-[160px] whitespace-normal'>
+          <div className='font-medium'>{row.shiftCode}</div>
+          <div className='text-muted-foreground text-xs'>{row.shiftName}</div>
+        </div>
+      )
+    },
+    {
+      header: 'Định biên',
+      cell: (row) => (
+        <div className='min-w-[88px] text-right'>{formatNumber(row.targetHeadcount)}</div>
+      )
+    },
+    {
+      header: 'Thực tế',
+      cell: (row) => (
+        <div className='min-w-[96px] text-right'>
+          <div className='font-medium'>{formatNumber(row.actualHeadcount)}</div>
+          <div className='text-muted-foreground text-xs'>
+            {formatNumber(row.actualWorkdays)} công
+          </div>
+        </div>
+      )
+    },
+    {
+      header: 'Chênh lệch',
+      cell: (row) => (
+        <div className='min-w-[104px] text-right'>
+          <Badge
+            variant={
+              row.variance === 0 ? 'outline' : row.variance > 0 ? 'secondary' : 'destructive'
+            }
+          >
+            {row.variance > 0 ? '+' : ''}
+            {formatNumber(row.variance)}
+          </Badge>
+        </div>
+      )
+    },
+    {
+      header: 'Tỷ lệ đáp ứng',
+      cell: (row) => (
+        <div className='min-w-[124px] text-right'>{formatNumber(row.coverageRate)}%</div>
+      )
+    },
+    {
+      header: 'Forecast lương',
+      cell: (row) => (
+        <div className='min-w-[148px] text-right font-semibold whitespace-nowrap'>
+          {formatVND(row.estimatedPayrollCost)}
+        </div>
+      )
+    },
+    {
+      header: 'Cảnh báo',
+      cell: (row) => (
+        <div className='flex min-w-[320px] flex-wrap gap-1'>
+          {row.warningFlags.length > 0 ? (
+            row.warningFlags.map((warning) => (
+              <Badge key={warning} variant='outline' className='text-xs whitespace-normal'>
+                {warning}
+              </Badge>
+            ))
+          ) : (
+            <span className='text-muted-foreground text-xs'>Không có cảnh báo</span>
+          )}
+        </div>
+      )
+    },
+    ...(canEdit
+      ? [
+          {
+            header: 'Thao tác',
+            cell: (row: (typeof tracking.rows)[number]) => (
+              <div className='flex min-w-[160px] justify-end gap-1'>
+                <EntityFormDialog
+                  mode='edit'
+                  title={`Cập nhật định biên ${row.departmentName} - ${row.shiftCode}`}
+                  description='Chỉnh lại định biên chuẩn cho dòng tracking này.'
+                  action={upsertDailyStaffingTarget}
+                  defaults={{
+                    workDate: row.workDate,
+                    departmentId: row.departmentId,
+                    shiftId: row.shiftId,
+                    targetHeadcount: String(row.targetHeadcount),
+                    note: row.note ?? ''
+                  }}
+                  fields={[
+                    { name: 'workDate', label: 'Ngày', type: 'date', required: true },
+                    {
+                      name: 'departmentId',
+                      label: 'Bộ phận',
+                      type: 'select',
+                      required: true,
+                      options: departments
+                    },
+                    {
+                      name: 'shiftId',
+                      label: 'Ca làm việc',
+                      type: 'select',
+                      required: true,
+                      options: shiftOptions
+                    },
+                    {
+                      name: 'targetHeadcount',
+                      label: 'Định biên',
+                      type: 'number',
+                      required: true
+                    },
+                    {
+                      name: 'note',
+                      label: 'Ghi chú',
+                      type: 'textarea',
+                      colSpan: 2
+                    }
+                  ]}
+                  successMessage='Đã cập nhật định biên ngày'
+                />
+                {row.targetId ? (
+                  <ConfirmDeleteDialog
+                    label={`định biên ${row.departmentName} - ${row.shiftCode} ngày ${row.workDate}`}
+                    action={deleteDailyStaffingTarget.bind(null, row.targetId)}
+                  />
+                ) : null}
+              </div>
+            )
+          }
+        ]
+      : [])
+  ];
+
   return (
     <PageContainer
       pageTitle='Định biên & tracking ngày'
-      pageDescription='Theo dõi số người cần, số người đi làm thực tế và forecast chi phí lương theo từng ngày, bộ phận và ca làm việc.'
       pageHeaderAction={
         canEdit ? (
           <div data-tour='staffing-create'>
@@ -95,10 +234,7 @@ export default async function StaffingTrackingPage(props: PageProps) {
                   label: 'Ca làm việc',
                   type: 'select',
                   required: true,
-                  options: shifts.map((shift) => ({
-                    value: shift.id,
-                    label: `${shift.code} · ${shift.name}`
-                  }))
+                  options: shiftOptions
                 },
                 {
                   name: 'targetHeadcount',
@@ -155,10 +291,7 @@ export default async function StaffingTrackingPage(props: PageProps) {
             name='shiftId'
             value={tracking.filters.shiftId}
             placeholder='Tất cả ca'
-            options={shifts.map((shift) => ({
-              value: shift.id,
-              label: `${shift.code} · ${shift.name}`
-            }))}
+            options={shiftOptions}
           />
           <div className='flex gap-2'>
             <Button type='submit'>Lọc dữ liệu</Button>
@@ -196,7 +329,10 @@ export default async function StaffingTrackingPage(props: PageProps) {
           />
         </div>
 
-        <div className='rounded-2xl border bg-card p-4' data-tour='staffing-table'>
+        <div
+          className='min-w-0 overflow-hidden rounded-2xl border bg-card p-4'
+          data-tour='staffing-table'
+        >
           <div className='flex flex-col gap-2 md:flex-row md:items-center md:justify-between'>
             <div>
               <h2 className='text-base font-semibold'>Bảng định biên theo ngày</h2>
@@ -210,155 +346,12 @@ export default async function StaffingTrackingPage(props: PageProps) {
             </Button>
           </div>
 
-          <div className='mt-4 overflow-x-auto'>
-            <Table className='min-w-[1280px]'>
-              <TableHeader className='bg-muted/40'>
-                <TableRow>
-                  <TableHead className='w-[120px]'>Ngày</TableHead>
-                  <TableHead className='w-[240px]'>Bộ phận</TableHead>
-                  <TableHead className='w-[180px]'>Ca</TableHead>
-                  <TableHead className='w-[96px] text-right'>Định biên</TableHead>
-                  <TableHead className='w-[108px] text-right'>Thực tế</TableHead>
-                  <TableHead className='w-[110px] text-right'>Chênh lệch</TableHead>
-                  <TableHead className='w-[128px] text-right'>Tỷ lệ đáp ứng</TableHead>
-                  <TableHead className='w-[164px] text-right'>Forecast lương</TableHead>
-                  <TableHead className='min-w-[320px]'>Cảnh báo</TableHead>
-                  {canEdit ? <TableHead className='w-[96px] text-right'>Thao tác</TableHead> : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tracking.rows.length > 0 ? (
-                  tracking.rows.map((row) => (
-                    <TableRow key={row.id} className='align-top'>
-                      <TableCell className='font-medium whitespace-normal'>
-                        {row.workDate}
-                      </TableCell>
-                      <TableCell className='whitespace-normal'>
-                        <div className='max-w-[220px] text-sm leading-6'>{row.departmentName}</div>
-                      </TableCell>
-                      <TableCell className='whitespace-normal'>
-                        <div className='font-medium'>{row.shiftCode}</div>
-                        <div className='text-muted-foreground text-xs'>{row.shiftName}</div>
-                      </TableCell>
-                      <TableCell className='text-right'>
-                        {formatNumber(row.targetHeadcount)}
-                      </TableCell>
-                      <TableCell className='text-right'>
-                        <div className='font-medium'>{formatNumber(row.actualHeadcount)}</div>
-                        <div className='text-muted-foreground text-xs'>
-                          {formatNumber(row.actualWorkdays)} công
-                        </div>
-                      </TableCell>
-                      <TableCell className='text-right'>
-                        <Badge
-                          variant={
-                            row.variance === 0
-                              ? 'outline'
-                              : row.variance > 0
-                                ? 'secondary'
-                                : 'destructive'
-                          }
-                        >
-                          {row.variance > 0 ? '+' : ''}
-                          {formatNumber(row.variance)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className='text-right whitespace-nowrap'>
-                        {formatNumber(row.coverageRate)}%
-                      </TableCell>
-                      <TableCell className='text-right font-semibold whitespace-nowrap'>
-                        {formatVND(row.estimatedPayrollCost)}
-                      </TableCell>
-                      <TableCell className='whitespace-normal'>
-                        <div className='flex max-w-[320px] flex-wrap gap-1'>
-                          {row.warningFlags.length > 0 ? (
-                            row.warningFlags.map((warning) => (
-                              <Badge
-                                key={warning}
-                                variant='outline'
-                                className='text-xs whitespace-normal'
-                              >
-                                {warning}
-                              </Badge>
-                            ))
-                          ) : (
-                            <span className='text-muted-foreground text-xs'>Không có cảnh báo</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      {canEdit ? (
-                        <TableCell>
-                          <div className='flex justify-end gap-1'>
-                            <EntityFormDialog
-                              mode='edit'
-                              title={`Cập nhật định biên ${row.departmentName} - ${row.shiftCode}`}
-                              description='Chỉnh lại định biên chuẩn cho dòng tracking này.'
-                              action={upsertDailyStaffingTarget}
-                              defaults={{
-                                workDate: row.workDate,
-                                departmentId: row.departmentId,
-                                shiftId: row.shiftId,
-                                targetHeadcount: String(row.targetHeadcount),
-                                note: row.note ?? ''
-                              }}
-                              fields={[
-                                { name: 'workDate', label: 'Ngày', type: 'date', required: true },
-                                {
-                                  name: 'departmentId',
-                                  label: 'Bộ phận',
-                                  type: 'select',
-                                  required: true,
-                                  options: departments
-                                },
-                                {
-                                  name: 'shiftId',
-                                  label: 'Ca làm việc',
-                                  type: 'select',
-                                  required: true,
-                                  options: shifts.map((shift) => ({
-                                    value: shift.id,
-                                    label: `${shift.code} · ${shift.name}`
-                                  }))
-                                },
-                                {
-                                  name: 'targetHeadcount',
-                                  label: 'Định biên',
-                                  type: 'number',
-                                  required: true
-                                },
-                                {
-                                  name: 'note',
-                                  label: 'Ghi chú',
-                                  type: 'textarea',
-                                  colSpan: 2
-                                }
-                              ]}
-                              successMessage='Đã cập nhật định biên ngày'
-                            />
-                            {row.targetId ? (
-                              <ConfirmDeleteDialog
-                                label={`định biên ${row.departmentName} - ${row.shiftCode} ngày ${row.workDate}`}
-                                action={deleteDailyStaffingTarget.bind(null, row.targetId)}
-                              />
-                            ) : null}
-                          </div>
-                        </TableCell>
-                      ) : null}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={canEdit ? 10 : 9}
-                      className='text-muted-foreground px-4 py-10 text-center'
-                    >
-                      Chưa có dữ liệu định biên hoặc công thực tế trong phạm vi lọc. Hãy khai báo
-                      định biên hoặc kiểm tra lại dữ liệu chấm công.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+          <div className='mt-4 min-w-0'>
+            <SimpleTable
+              columns={columns}
+              rows={tracking.rows}
+              emptyText='Chưa có dữ liệu định biên hoặc công thực tế trong phạm vi lọc. Hãy khai báo định biên hoặc kiểm tra lại dữ liệu chấm công.'
+            />
           </div>
         </div>
       </div>

@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { DataTable } from '@/components/ui/table/data-table';
 import { DataTableColumnHeader } from '@/components/ui/table/data-table-column-header';
+import { ConfirmActionButton } from '@/features/hr/common/confirm-action-button';
 import { cn } from '@/lib/utils';
 
 import {
@@ -35,6 +36,7 @@ type AttendanceBoardProps = AttendanceBoardData & {
 };
 
 type DraftRow = AttendanceBoardData['employees'][number];
+type Result = { ok: true } | { ok: false; error: string };
 
 const WEEKDAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const CONFLICT_META: Record<AttendanceConflictKind, { label: string; className: string }> = {
@@ -287,57 +289,63 @@ export function AttendanceBoard({
     });
   }
 
-  function handleClear(row: DraftRow) {
-    startSaving(async () => {
-      setPendingClearId(row.id);
-      const result = await clearAttendanceBoardRow(weekStart, row.id);
-      setPendingClearId(null);
+  async function handleClear(row: DraftRow): Promise<Result> {
+    return new Promise((resolve) => {
+      startSaving(async () => {
+        setPendingClearId(row.id);
+        const result = await clearAttendanceBoardRow(weekStart, row.id);
+        setPendingClearId(null);
 
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
+        if (!result.ok) {
+          toast.error(result.error);
+          resolve(result);
+          return;
+        }
 
-      setRows((current) =>
-        current.map((item) =>
-          item.id === row.id
-            ? {
-                ...item,
-                cells: Object.fromEntries(
-                  weekDates.map((date) => [
-                    date,
-                    {
-                      morning: false,
-                      afternoon: false,
-                      source: 'empty',
-                      conflicts: item.cells[date]?.conflicts ?? [],
-                      conflictKinds: item.cells[date]?.conflictKinds ?? [],
-                      note: null
-                    }
-                  ])
-                )
-              }
-            : item
-        )
-      );
-      toast.success(`Đã xóa công thủ công cả tuần của ${row.fullName}.`);
-      router.refresh();
+        setRows((current) =>
+          current.map((item) =>
+            item.id === row.id
+              ? {
+                  ...item,
+                  cells: Object.fromEntries(
+                    weekDates.map((date) => [
+                      date,
+                      {
+                        morning: false,
+                        afternoon: false,
+                        source: 'empty',
+                        conflicts: item.cells[date]?.conflicts ?? [],
+                        conflictKinds: item.cells[date]?.conflictKinds ?? [],
+                        note: null
+                      }
+                    ])
+                  )
+                }
+              : item
+          )
+        );
+        resolve({ ok: true });
+        router.refresh();
+      });
     });
   }
 
-  function handleToggleLock(nextLocked: boolean) {
-    startSaving(async () => {
-      setPendingLock(true);
-      const result = await toggleAttendanceWeekLock(weekStart, nextLocked);
-      setPendingLock(false);
+  async function handleToggleLock(nextLocked: boolean): Promise<Result> {
+    return new Promise((resolve) => {
+      startSaving(async () => {
+        setPendingLock(true);
+        const result = await toggleAttendanceWeekLock(weekStart, nextLocked);
+        setPendingLock(false);
 
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
+        if (!result.ok) {
+          toast.error(result.error);
+          resolve(result);
+          return;
+        }
 
-      toast.success(nextLocked ? 'Đã khóa tuần công.' : 'Đã mở khóa tuần công.');
-      router.refresh();
+        resolve({ ok: true });
+        router.refresh();
+      });
     });
   }
 
@@ -534,18 +542,24 @@ export function AttendanceBoard({
 
           return (
             <div className='flex min-w-[236px] justify-end gap-2'>
-              <Button
-                type='button'
-                size='sm'
-                variant='outline'
-                onClick={() => handleClear(record)}
-                isLoading={isClearingRow}
+              <ConfirmActionButton
+                title='Xác nhận xóa công tuần'
+                description={`Toàn bộ công thủ công trong tuần của ${record.fullName} sẽ bị xóa.`}
+                confirmLabel='Xóa tuần'
+                pendingLabel='Đang xóa...'
+                successMessage={`Đã xóa công thủ công cả tuần của ${record.fullName}.`}
+                action={() => handleClear(record)}
+                triggerLabel={
+                  <>
+                    <Icons.trash className='h-4 w-4' />
+                    Xóa tuần
+                  </>
+                }
+                triggerVariant='outline'
                 disabled={!canEdit || isSavingRow || lock.isLocked || !isDirty}
-                aria-label={`Xóa công tuần của ${record.fullName}`}
-              >
-                <Icons.trash className='h-4 w-4' />
-                Xóa tuần
-              </Button>
+                triggerClassName='min-w-[108px]'
+                confirmClassName='bg-destructive text-white hover:bg-destructive/90'
+              />
               <Button
                 type='button'
                 size='sm'
@@ -742,19 +756,29 @@ export function AttendanceBoard({
 
         {canEdit ? (
           <div className='flex justify-end'>
-            <Button
-              type='button'
-              variant={lock.isLocked ? 'outline' : 'default'}
+            <ConfirmActionButton
+              title={lock.isLocked ? 'Xác nhận mở khóa tuần công' : 'Xác nhận khóa tuần công'}
+              description={
+                lock.isLocked
+                  ? 'Sau khi mở khóa, HR có thể tiếp tục cập nhật công thủ công trong tuần này.'
+                  : 'Sau khi khóa, HR sẽ không thể chỉnh sửa công thủ công của tuần này cho đến khi mở khóa lại.'
+              }
+              confirmLabel={lock.isLocked ? 'Mở khóa tuần công' : 'Khóa tuần công'}
+              pendingLabel='Đang cập nhật...'
+              successMessage={lock.isLocked ? 'Đã mở khóa tuần công.' : 'Đã khóa tuần công.'}
+              action={() => handleToggleLock(!lock.isLocked)}
+              triggerLabel={lock.isLocked ? 'Mở khóa tuần công' : 'Khóa tuần công'}
+              triggerVariant={lock.isLocked ? 'outline' : 'default'}
               disabled={pendingLock || lock.lockedByPayroll}
-              onClick={() => handleToggleLock(!lock.isLocked)}
-            >
-              {pendingLock ? '...' : lock.isLocked ? 'Mở khóa tuần công' : 'Khóa tuần công'}
-            </Button>
+            />
           </div>
         ) : null}
       </div>
 
-      <div className='rounded-xl border bg-card p-4' data-tour='timesheets-table'>
+      <div
+        className='min-w-0 overflow-hidden rounded-xl border bg-card p-4'
+        data-tour='timesheets-table'
+      >
         <DataTable
           table={table}
           emptyText='Không có nhân sự phù hợp với bộ lọc hiện tại. Hãy đổi tuần hoặc mở rộng bộ lọc.'

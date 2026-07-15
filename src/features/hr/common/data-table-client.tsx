@@ -5,6 +5,8 @@ import {
   type ColumnDef,
   flexRender,
   getCoreRowModel,
+  getFacetedMinMaxValues,
+  getFacetedUniqueValues,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -13,7 +15,7 @@ import {
 
 import { DataTableColumnHeader } from '@/components/ui/table/data-table-column-header';
 import { DataTablePagination } from '@/components/ui/table/data-table-pagination';
-import { DataTableViewOptions } from '@/components/ui/table/data-table-view-options';
+import { DataTableToolbar } from '@/components/ui/table/data-table-toolbar';
 import { Input } from '@/components/ui/input';
 import {
   Table,
@@ -23,27 +25,144 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
+import type { FilterVariant, Option } from '@/types/data-table';
 
 export type TableRowData = {
   id: string;
   cells: React.ReactNode[];
   sort: string[];
+  values: unknown[];
   search: string;
 };
 
-/**
- * Data table (kiểu tablecn) tự-size: tìm kiếm toàn cục, sắp xếp theo cột,
- * ẩn/hiện cột và phân trang — dựng trên TanStack React Table.
- * Nhận sẵn các ô đã render (ReactNode) từ server để giữ ranh giới RSC.
- */
+type ColumnFilterMeta = {
+  enabled?: boolean;
+  variant?: FilterVariant;
+  placeholder?: string;
+  options?: Option[];
+  range?: [number, number];
+  unit?: string;
+};
+
+function isIsoDateLike(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
+}
+
+function parseNumberish(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value !== 'string') {
+    return Number.NaN;
+  }
+
+  const normalized = value
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\.(?=\d{3}\b)/g, '')
+    .replace(',', '.');
+  const parsed = Number(normalized);
+
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+function inferFilterMeta(
+  header: string,
+  values: unknown[],
+  meta?: ColumnFilterMeta
+): ColumnFilterMeta | undefined {
+  if (meta?.enabled === false) {
+    return undefined;
+  }
+
+  if (meta?.variant) {
+    return {
+      enabled: true,
+      ...meta
+    };
+  }
+
+  const cleaned = values
+    .map((value) => (typeof value === 'string' ? value.trim() : value))
+    .filter((value) => value !== '' && value !== null && value !== undefined);
+
+  if (!cleaned.length) {
+    return undefined;
+  }
+
+  const normalizedHeader = header.trim().toLowerCase();
+  if (!normalizedHeader || normalizedHeader === 'thao tác') {
+    return undefined;
+  }
+
+  const stringValues = cleaned.map((value) => String(value));
+  const uniqueCounts = new Map<string, number>();
+
+  for (const value of stringValues) {
+    uniqueCounts.set(value, (uniqueCounts.get(value) ?? 0) + 1);
+  }
+
+  const uniqueEntries = Array.from(uniqueCounts.entries());
+  const allNumbers = cleaned.every((value) => Number.isFinite(parseNumberish(value)));
+
+  if (allNumbers && uniqueEntries.length > 1) {
+    const numericValues = cleaned
+      .map((value) => parseNumberish(value))
+      .filter((value) => Number.isFinite(value));
+    const min = Math.min(...numericValues);
+    const max = Math.max(...numericValues);
+
+    if (Number.isFinite(min) && Number.isFinite(max) && min !== max) {
+      return {
+        enabled: true,
+        variant: 'range',
+        range: [min, max],
+        ...meta
+      };
+    }
+  }
+
+  const allIsoDates = stringValues.every((value) => isIsoDateLike(value));
+  if (allIsoDates && uniqueEntries.length > 1) {
+    return {
+      enabled: true,
+      variant: 'dateRange',
+      ...meta
+    };
+  }
+
+  if (uniqueEntries.length > 1 && uniqueEntries.length <= 8) {
+    return {
+      enabled: true,
+      variant: 'multiSelect',
+      options: uniqueEntries
+        .sort((a, b) => b[1] - a[1])
+        .map(([value, count]) => ({ value, label: value, count })),
+      ...meta
+    };
+  }
+
+  if (uniqueEntries.length > 1) {
+    return {
+      enabled: true,
+      variant: 'text',
+      placeholder: meta?.placeholder ?? `Lọc ${header.toLowerCase()}`
+    };
+  }
+
+  return undefined;
+}
+
 export function DataTableClient({
   headers,
   data,
+  filterMeta = [],
   emptyText = 'Chưa có dữ liệu.',
   searchPlaceholder = 'Tìm kiếm...'
 }: {
   headers: string[];
   data: TableRowData[];
+  filterMeta?: Array<ColumnFilterMeta | undefined>;
   emptyText?: string;
   searchPlaceholder?: string;
 }) {
@@ -51,18 +170,77 @@ export function DataTableClient({
 
   const columns = React.useMemo<ColumnDef<TableRowData>[]>(
     () =>
-      headers.map((header, i) => ({
-        id: header || `col_${i}`,
-        accessorFn: (row) => row.sort[i] ?? '',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={header} />
-        ),
-        cell: ({ row }) => row.original.cells[i],
-        enableSorting: true,
-        enableHiding: true,
-        meta: { label: header || `Cột ${i + 1}` }
-      })),
-    [headers]
+      headers.map((header, index) => {
+        const effectiveMeta = inferFilterMeta(
+          header,
+          data.map((row) => row.values[index]),
+          filterMeta[index]
+        );
+        const variant = effectiveMeta?.variant;
+
+        return {
+          id: header || `col_${index}`,
+          accessorFn: (row) => row.values[index] ?? row.sort[index] ?? '',
+          header: ({ column }) => <DataTableColumnHeader column={column} title={header} />,
+          cell: ({ row }) => row.original.cells[index],
+          enableSorting: true,
+          enableHiding: true,
+          enableColumnFilter: Boolean(effectiveMeta?.enabled),
+          filterFn: (row, columnId, filterValue) => {
+            const value = row.getValue(columnId);
+
+            if (variant === 'multiSelect' || variant === 'select') {
+              const selected = Array.isArray(filterValue) ? filterValue : [];
+              if (!selected.length) return true;
+              return selected.includes(String(value ?? ''));
+            }
+
+            if (variant === 'range') {
+              if (!Array.isArray(filterValue) || filterValue.length !== 2) return true;
+
+              const [min, max] = filterValue as [number, number];
+              const numericValue = parseNumberish(value);
+
+              if (!Number.isFinite(numericValue)) return false;
+              return numericValue >= min && numericValue <= max;
+            }
+
+            if (variant === 'date' || variant === 'dateRange') {
+              const rawValue = String(value ?? '');
+              const timestamp = new Date(rawValue).getTime();
+
+              if (!Number.isFinite(timestamp)) return false;
+
+              if (Array.isArray(filterValue)) {
+                const [from, to] = filterValue as Array<number | undefined>;
+                const afterFrom = typeof from !== 'number' || timestamp >= from;
+                const beforeTo = typeof to !== 'number' || timestamp <= to;
+                return afterFrom && beforeTo;
+              }
+
+              if (typeof filterValue === 'number') {
+                const selectedDate = new Date(filterValue).toISOString().slice(0, 10);
+                return rawValue.slice(0, 10) === selectedDate;
+              }
+
+              return true;
+            }
+
+            return String(value ?? '')
+              .toLowerCase()
+              .includes(String(filterValue ?? '').toLowerCase());
+          },
+          meta: {
+            label: header || `Cột ${index + 1}`,
+            placeholder: effectiveMeta?.placeholder,
+            variant,
+            options: effectiveMeta?.options,
+            range: effectiveMeta?.range,
+            unit: effectiveMeta?.unit
+          }
+        } satisfies ColumnDef<TableRowData>;
+      }),
+    [data, filterMeta, headers]
   );
 
   const table = useReactTable({
@@ -74,36 +252,36 @@ export function DataTableClient({
       row.original.search.includes(String(value).toLowerCase()),
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+    getFacetedMinMaxValues: getFacetedMinMaxValues(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 10 } }
   });
 
   return (
-    <div className='flex flex-col gap-2.5'>
-      <div className='flex items-center justify-between gap-2'>
+    <div className='flex min-w-0 max-w-full flex-col gap-2.5'>
+      <div className='flex flex-wrap items-center gap-2'>
         <Input
           placeholder={searchPlaceholder}
           value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
+          onChange={(event) => setGlobalFilter(event.target.value)}
           className='h-9 w-full max-w-xs'
         />
-        <DataTableViewOptions table={table} />
       </div>
 
-      <div className='rounded-lg border'>
+      <DataTableToolbar table={table} />
+
+      <div className='min-w-0 rounded-lg border'>
         <Table>
           <TableHeader>
-            {table.getHeaderGroups().map((hg) => (
-              <TableRow key={hg.id}>
-                {hg.headers.map((header) => (
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
                     {header.isPlaceholder
                       ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                      : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>

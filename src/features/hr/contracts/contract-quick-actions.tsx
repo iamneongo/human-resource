@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { ConfirmActionButton } from '@/features/hr/common/confirm-action-button';
 
 import {
   createContractAppendix,
@@ -52,14 +53,18 @@ export function ContractQuickActions({ contractId }: Props) {
       >
         Tạo phụ lục
       </Button>
-      <Button
-        variant='destructive'
-        size='sm'
+      <ConfirmActionButton
+        title='Xác nhận chấm dứt hợp đồng'
+        description='Hợp đồng này sẽ được chuyển sang trạng thái chấm dứt để theo dõi lịch sử và báo cáo.'
+        confirmLabel='Chấm dứt'
+        pendingLabel='Đang chấm dứt...'
+        successMessage='Đã chấm dứt hợp đồng'
+        action={() => terminateContract(contractId)}
+        triggerLabel='Chấm dứt'
+        triggerVariant='destructive'
+        confirmClassName='bg-destructive text-white hover:bg-destructive/90'
         disabled={pending}
-        onClick={() => run(terminateContract, 'Đã chấm dứt hợp đồng')}
-      >
-        Chấm dứt
-      </Button>
+      />
     </div>
   );
 }

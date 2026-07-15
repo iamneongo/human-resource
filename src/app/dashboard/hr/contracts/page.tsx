@@ -249,7 +249,7 @@ export default async function ContractsPage() {
           />
         </div>
 
-        <div data-tour='contracts-table'>
+        <div className='min-w-0 overflow-hidden' data-tour='contracts-table'>
           <SimpleTable
             columns={columns}
             rows={rows}

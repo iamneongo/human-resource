@@ -1,10 +1,6 @@
 'use client';
 
-import { useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-
-import { Button } from '@/components/ui/button';
+import { ConfirmActionButton } from '@/features/hr/common/confirm-action-button';
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -17,32 +13,20 @@ export function LeaveRequestActions({
   canCancel: boolean;
   cancel: (id: string) => Promise<Result>;
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-
   if (!canCancel) {
     return null;
   }
 
   return (
-    <Button
-      size='sm'
-      variant='ghost'
-      disabled={pending}
-      onClick={() =>
-        startTransition(async () => {
-          const result = await cancel(leaveId);
-          if (!result.ok) {
-            toast.error(result.error);
-            return;
-          }
-
-          toast.success('Đã hủy đơn nghỉ.');
-          router.refresh();
-        })
-      }
-    >
-      Hủy đơn
-    </Button>
+    <ConfirmActionButton
+      title='Xác nhận hủy đơn nghỉ'
+      description='Đơn nghỉ này sẽ bị hủy và không còn chờ duyệt nữa.'
+      confirmLabel='Hủy đơn'
+      pendingLabel='Đang hủy...'
+      successMessage='Đã hủy đơn nghỉ.'
+      action={() => cancel(leaveId)}
+      triggerLabel='Hủy đơn'
+      triggerVariant='ghost'
+    />
   );
 }

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useMemo, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import { driver, type Driver } from 'driver.js';
 
 import { getAvailableTours, getTourById } from './registry';
@@ -16,6 +17,7 @@ const TourContext = createContext<TourContextValue | null>(null);
 export function TourProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const driverRef = useRef<Driver | null>(null);
+  const { resolvedTheme } = useTheme();
   const availableTours = useMemo(() => getAvailableTours(pathname), [pathname]);
 
   function startTour(tourId: string) {
@@ -32,8 +34,12 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       showProgress: true,
       animate: true,
       allowClose: true,
-      overlayOpacity: 0.48,
+      overlayOpacity: resolvedTheme === 'dark' ? 0.62 : 0.48,
       stagePadding: 8,
+      popoverClass:
+        resolvedTheme === 'dark'
+          ? 'driver-tour-popover driver-tour-popover-dark'
+          : 'driver-tour-popover driver-tour-popover-light',
       nextBtnText: 'Tiếp',
       prevBtnText: 'Quay lại',
       doneBtnText: 'Xong',

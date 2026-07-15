@@ -1,5 +1,7 @@
 'use client';
 
+import type { CSSProperties } from 'react';
+
 import {
   Area,
   AreaChart,
@@ -12,6 +14,9 @@ import {
   LineChart,
   Pie,
   PieChart,
+  PolarAngleAxis,
+  RadialBar,
+  RadialBarChart,
   XAxis,
   YAxis
 } from 'recharts';
@@ -91,9 +96,10 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
     fill: COOL_SCALE[index % COOL_SCALE.length]
   }));
   const statusTotal = statusData.reduce((sum, item) => sum + item.value, 0);
-  const statusBarData = statusData.map((item) => ({
+  const statusRadialData = statusData.map((item) => ({
     ...item,
-    percent: statusTotal > 0 ? Number(((item.value / statusTotal) * 100).toFixed(1)) : 0
+    score: statusTotal > 0 ? Number(((item.value / statusTotal) * 100).toFixed(1)) : 0,
+    fill: `url(#statusGradient-${item.status})`
   }));
   const statusConfig: ChartConfig = Object.fromEntries(
     statusData.map((item) => [
@@ -179,100 +185,140 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
       </Card>
 
       <Card className='overflow-hidden border-border/70 bg-gradient-to-br from-cyan-500/5 via-background to-background lg:col-span-2'>
-        <CardHeader className='flex flex-row items-start justify-between gap-3'>
-          <div>
+        <CardHeader className='items-center pb-0 text-center'>
+          <div className='space-y-1'>
             <CardTitle>Trạng thái nhân sự</CardTitle>
+            <CardDescription>Phân bổ nhân sự theo trạng thái hiện tại</CardDescription>
           </div>
-          {chartBadge('Theo trạng thái hồ sơ')}
         </CardHeader>
-        <CardContent className='pb-4'>
+        <CardContent className='pb-2'>
           {statusData.length ? (
-            <ChartContainer config={statusConfig} className='h-[250px] w-full'>
-              <div className='grid h-full gap-4'>
-                <div className='flex items-end justify-between rounded-2xl border border-border/60 bg-background/80 px-4 py-3'>
-                  <div>
-                    <p className='text-muted-foreground text-xs uppercase tracking-[0.2em]'>
-                      Tổng headcount
-                    </p>
-                    <p className='text-3xl font-semibold'>{statusTotal.toLocaleString('vi-VN')}</p>
-                  </div>
-                  <div className='flex flex-wrap justify-end gap-2'>
-                    {statusBarData.map((item) => (
-                      <div
-                        key={item.status}
-                        className='rounded-full border border-border/60 bg-background px-3 py-1.5 text-right'
-                      >
-                        <div className='flex items-center gap-2 text-xs font-medium'>
-                          <span
-                            className='size-2 rounded-full'
-                            style={{ backgroundColor: item.fill }}
-                          />
-                          <span>{item.label}</span>
-                        </div>
-                        <div className='mt-1 text-sm font-semibold'>{item.percent}%</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+            <ChartContainer
+              config={statusConfig}
+              className='mx-auto aspect-square max-h-[300px] w-full'
+            >
+              <RadialBarChart
+                data={statusRadialData}
+                innerRadius={34}
+                outerRadius={112}
+                barSize={22}
+              >
+                <defs>
+                  {statusData.map((item) => (
+                    <linearGradient
+                      key={item.status}
+                      id={`statusGradient-${item.status}`}
+                      x1='0'
+                      y1='0'
+                      x2='1'
+                      y2='0'
+                    >
+                      <stop
+                        offset='0%'
+                        stopColor={`var(--color-${item.status})`}
+                        stopOpacity={0.5}
+                      />
+                      <stop
+                        offset='100%'
+                        stopColor={`var(--color-${item.status})`}
+                        stopOpacity={1}
+                      />
+                    </linearGradient>
+                  ))}
+                  <filter id='statusGlow' x='-15%' y='-15%' width='130%' height='130%'>
+                    <feGaussianBlur stdDeviation='3' result='blur' />
+                    <feComposite in='SourceGraphic' in2='blur' operator='over' />
+                  </filter>
+                </defs>
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      className='min-w-44 gap-2.5'
+                      nameKey='status'
+                      formatter={(value, name, item) => {
+                        const rawValue = Number(
+                          (item.payload as { value?: number } | undefined)?.value ?? 0
+                        );
 
-                <BarChart
-                  accessibilityLayer
-                  data={statusBarData}
-                  margin={{ top: 16, right: 8, left: 8, bottom: 0 }}
-                >
-                  <defs>
-                    {statusBarData.map((entry) => (
-                      <linearGradient
-                        key={entry.status}
-                        id={`statusGradient-${entry.status}`}
-                        x1='0'
-                        y1='0'
-                        x2='0'
-                        y2='1'
-                      >
-                        <stop offset='0%' stopColor={entry.fill} stopOpacity={1} />
-                        <stop offset='100%' stopColor={entry.fill} stopOpacity={0.42} />
-                      </linearGradient>
-                    ))}
-                  </defs>
-                  <CartesianGrid vertical={false} strokeDasharray='3 3' />
-                  <XAxis
-                    dataKey='label'
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={10}
-                    fontSize={12}
-                  />
-                  <YAxis hide />
-                  <ChartTooltip
-                    cursor={{ fill: 'color-mix(in oklab, var(--muted) 28%, transparent)' }}
-                    content={
-                      <ChartTooltipContent
-                        formatter={(value, _name, item) => {
-                          const payload = item.payload as { percent: number };
-                          return `${Number(value).toLocaleString('vi-VN')} nhân sự (${payload.percent}%)`;
-                        }}
-                        nameKey='label'
-                        hideLabel
-                      />
-                    }
-                  />
-                  <Bar dataKey='value' radius={[12, 12, 4, 4]} maxBarSize={72}>
-                    {statusBarData.map((entry) => (
-                      <Cell
-                        key={entry.status}
-                        fill={`url(#statusGradient-${entry.status})`}
-                        stroke={entry.fill}
-                        strokeOpacity={0.16}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </div>
+                        return (
+                          <div className='flex w-full items-center justify-between gap-2'>
+                            <div className='flex items-center gap-1.5'>
+                              <div
+                                className='h-2.5 w-2.5 shrink-0 rounded-xs bg-(--color-bg)'
+                                style={
+                                  {
+                                    '--color-bg': `var(--color-${name})`
+                                  } as CSSProperties
+                                }
+                              />
+                              <span className='text-muted-foreground'>
+                                {statusConfig[name as keyof typeof statusConfig]?.label || name}
+                              </span>
+                            </div>
+                            <div className='text-right'>
+                              <div className='text-foreground font-semibold tabular-nums'>
+                                {rawValue.toLocaleString('vi-VN')}
+                              </div>
+                              <div className='text-muted-foreground text-[11px]'>
+                                {Number(value).toFixed(1)}%
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }}
+                    />
+                  }
+                />
+                <PolarAngleAxis type='number' domain={[0, 100]} angleAxisId={0} tick={false} />
+                <RadialBar
+                  dataKey='score'
+                  background
+                  cornerRadius={10}
+                  filter='url(#statusGlow)'
+                  label={{
+                    position: 'insideStart',
+                    fill: '#fff',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    formatter: (_value: unknown, entry: { value?: number }) =>
+                      entry.value?.toLocaleString('vi-VN') ?? '0'
+                  }}
+                />
+                <ChartLegend
+                  content={<ChartLegendContent nameKey='status' />}
+                  className='-translate-y-2 flex-wrap gap-3'
+                />
+              </RadialBarChart>
             </ChartContainer>
           ) : (
             <EmptyChart />
           )}
+          {statusData.length ? (
+            <div className='mt-2 flex flex-wrap items-center justify-center gap-2'>
+              <Badge
+                variant='outline'
+                className='gap-1.5 border-border/60 bg-background/70 font-normal'
+              >
+                <Icons.sparkles className='size-3.5 text-primary' />
+                Tổng headcount: {statusTotal.toLocaleString('vi-VN')}
+              </Badge>
+              {statusRadialData.map((item) => (
+                <div
+                  key={item.status}
+                  className='rounded-full border border-border/60 bg-background px-3 py-1.5 text-right'
+                >
+                  <div className='flex items-center gap-2 text-xs font-medium'>
+                    <span
+                      className='size-2 rounded-full'
+                      style={{ backgroundColor: `var(--color-${item.status})` }}
+                    />
+                    <span>{item.label}</span>
+                  </div>
+                  <div className='mt-1 text-sm font-semibold'>{item.score}%</div>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
