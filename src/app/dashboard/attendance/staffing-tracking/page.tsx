@@ -3,7 +3,6 @@ import Link from 'next/link';
 import PageContainer from '@/components/layout/page-container';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   deleteDailyStaffingTarget,
   getDailyStaffingTracking,
@@ -15,6 +14,7 @@ import { ConfirmDeleteDialog } from '@/features/hr/common/confirm-delete-dialog'
 import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
 import { departmentOptions } from '@/features/hr/common/lookups';
 import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
+import { SummaryMetricCard } from '@/features/hr/common/summary-metric-card';
 import { formatNumber, formatVND } from '@/lib/format';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
 
@@ -274,30 +274,36 @@ export default async function StaffingTrackingPage(props: PageProps) {
         </div>
 
         <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-5' data-tour='staffing-summary'>
-          <SummaryCard
-            title='Bộ phận theo dõi'
+          <SummaryMetricCard
+            label='Bộ phận theo dõi'
             value={formatNumber(tracking.summary.departmentsTracked)}
             helper='Có dữ liệu định biên hoặc phát sinh công thực tế'
+            tone='primary'
           />
-          <SummaryCard
-            title='Tổng định biên'
+          <SummaryMetricCard
+            label='Tổng định biên'
             value={formatNumber(tracking.summary.totalTargetHeadcount)}
             helper='Số người chuẩn cần bố trí trong giai đoạn lọc'
+            tone='sky'
           />
-          <SummaryCard
-            title='Tổng thực tế'
+          <SummaryMetricCard
+            label='Tổng thực tế'
             value={formatNumber(tracking.summary.totalActualHeadcount)}
             helper='Số người thực có mặt từ chấm công'
+            tone='emerald'
           />
-          <SummaryCard
-            title='Thiếu / dư người'
+          <SummaryMetricCard
+            label='Thiếu / dư người'
             value={`${formatNumber(tracking.summary.shortageHeadcount)} / ${formatNumber(tracking.summary.excessHeadcount)}`}
             helper='Thiếu trước, dư sau'
+            tone='amber'
           />
-          <SummaryCard
-            title='Forecast chi phí lương'
+          <SummaryMetricCard
+            label='Forecast chi phí lương'
             value={formatVND(tracking.summary.estimatedPayrollCost)}
             helper='Chỉ để theo dõi ngày, chưa ghi vào kỳ lương'
+            tone='slate'
+            valueClassName='text-xl @[250px]/card:text-2xl'
           />
         </div>
 
@@ -328,19 +334,5 @@ export default async function StaffingTrackingPage(props: PageProps) {
         </div>
       </div>
     </PageContainer>
-  );
-}
-
-function SummaryCard({ title, value, helper }: { title: string; value: string; helper: string }) {
-  return (
-    <Card className='shadow-sm'>
-      <CardHeader className='pb-2'>
-        <CardTitle className='text-sm font-medium'>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className='text-2xl font-semibold'>{value}</div>
-        <p className='text-muted-foreground mt-1 text-xs leading-5'>{helper}</p>
-      </CardContent>
-    </Card>
   );
 }

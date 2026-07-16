@@ -6,6 +6,7 @@ import { ConfirmDeleteDialog } from '@/features/hr/common/confirm-delete-dialog'
 import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
 import { employeeOptions } from '@/features/hr/common/lookups';
 import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
+import { SummaryMetricCard } from '@/features/hr/common/summary-metric-card';
 import {
   createContract,
   deleteContract,
@@ -221,31 +222,39 @@ export default async function ContractsPage() {
       }
     >
       <div className='space-y-4'>
-        <div className='grid gap-3 md:grid-cols-5' data-tour='contracts-summary'>
-          <SummaryCard
+        <div
+          className='grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5'
+          data-tour='contracts-summary'
+        >
+          <SummaryMetricCard
             label='Tổng hợp đồng'
             value={overview.totalContracts}
             helper='Toàn bộ hồ sơ đang quản lý'
+            tone='primary'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Đang hiệu lực'
             value={overview.activeContracts}
             helper='Có thể dùng để chạy demo lifecycle'
+            tone='sky'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Chưa đính file'
             value={overview.missingFiles}
             helper='Cần xử lý bước upload tài liệu'
+            tone='amber'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Sắp hết hạn 30 ngày'
             value={overview.expiring30}
             helper='Case cảnh báo gấp'
+            tone='rose'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Sắp hết hạn 60/90 ngày'
             value={`${overview.expiring60}/${overview.expiring90}`}
             helper='Theo dõi gia hạn và tái ký'
+            tone='slate'
           />
         </div>
 
@@ -258,23 +267,5 @@ export default async function ContractsPage() {
         </div>
       </div>
     </PageContainer>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  helper
-}: {
-  label: string;
-  value: string | number;
-  helper: string;
-}) {
-  return (
-    <div className='rounded-xl border bg-card p-4'>
-      <div className='text-muted-foreground text-xs uppercase tracking-wide'>{label}</div>
-      <div className='mt-2 text-2xl font-semibold'>{value}</div>
-      <div className='text-muted-foreground mt-1 text-sm'>{helper}</div>
-    </div>
   );
 }

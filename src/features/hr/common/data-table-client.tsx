@@ -44,27 +44,7 @@ type ColumnFilterMeta = {
   unit?: string;
 };
 
-function isIsoDateLike(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
-}
-
-function parseNumberish(value: unknown) {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value !== 'string') {
-    return Number.NaN;
-  }
-
-  const normalized = value
-    .replace(/[^\d,.-]/g, '')
-    .replace(/\.(?=\d{3}\b)/g, '')
-    .replace(',', '.');
-  const parsed = Number(normalized);
-
-  return Number.isFinite(parsed) ? parsed : Number.NaN;
-}
+const DEFAULT_FACETED_FILTER_LIMIT = 50;
 
 function inferFilterMeta(
   header: string,
@@ -103,35 +83,8 @@ function inferFilterMeta(
   }
 
   const uniqueEntries = Array.from(uniqueCounts.entries());
-  const allNumbers = cleaned.every((value) => Number.isFinite(parseNumberish(value)));
 
-  if (allNumbers && uniqueEntries.length > 1) {
-    const numericValues = cleaned
-      .map((value) => parseNumberish(value))
-      .filter((value) => Number.isFinite(value));
-    const min = Math.min(...numericValues);
-    const max = Math.max(...numericValues);
-
-    if (Number.isFinite(min) && Number.isFinite(max) && min !== max) {
-      return {
-        enabled: true,
-        variant: 'range',
-        range: [min, max],
-        ...meta
-      };
-    }
-  }
-
-  const allIsoDates = stringValues.every((value) => isIsoDateLike(value));
-  if (allIsoDates && uniqueEntries.length > 1) {
-    return {
-      enabled: true,
-      variant: 'dateRange',
-      ...meta
-    };
-  }
-
-  if (uniqueEntries.length > 1 && uniqueEntries.length <= 8) {
+  if (uniqueEntries.length > 1 && uniqueEntries.length <= DEFAULT_FACETED_FILTER_LIMIT) {
     return {
       enabled: true,
       variant: 'multiSelect',
@@ -193,37 +146,6 @@ export function DataTableClient({
               const selected = Array.isArray(filterValue) ? filterValue : [];
               if (!selected.length) return true;
               return selected.includes(String(value ?? ''));
-            }
-
-            if (variant === 'range') {
-              if (!Array.isArray(filterValue) || filterValue.length !== 2) return true;
-
-              const [min, max] = filterValue as [number, number];
-              const numericValue = parseNumberish(value);
-
-              if (!Number.isFinite(numericValue)) return false;
-              return numericValue >= min && numericValue <= max;
-            }
-
-            if (variant === 'date' || variant === 'dateRange') {
-              const rawValue = String(value ?? '');
-              const timestamp = new Date(rawValue).getTime();
-
-              if (!Number.isFinite(timestamp)) return false;
-
-              if (Array.isArray(filterValue)) {
-                const [from, to] = filterValue as Array<number | undefined>;
-                const afterFrom = typeof from !== 'number' || timestamp >= from;
-                const beforeTo = typeof to !== 'number' || timestamp <= to;
-                return afterFrom && beforeTo;
-              }
-
-              if (typeof filterValue === 'number') {
-                const selectedDate = new Date(filterValue).toISOString().slice(0, 10);
-                return rawValue.slice(0, 10) === selectedDate;
-              }
-
-              return true;
             }
 
             return String(value ?? '')

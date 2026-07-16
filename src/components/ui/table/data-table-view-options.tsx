@@ -33,12 +33,7 @@ export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          aria-label='Toggle columns'
-          variant='outline'
-          size='sm'
-          className='ml-auto hidden h-8 lg:flex'
-        >
+        <Button aria-label='Toggle columns' variant='outline' size='sm' className='ml-auto h-8'>
           <Icons.adjustments />
           View
           <CaretSortIcon className='ml-auto opacity-50' />

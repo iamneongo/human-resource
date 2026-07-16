@@ -1,6 +1,6 @@
 'use client';
 
-import type { ColumnDef, PaginationState, Updater } from '@tanstack/react-table';
+import type { ColumnDef, PaginationState, Updater, VisibilityState } from '@tanstack/react-table';
 import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -19,7 +19,9 @@ import {
 } from '@/components/ui/select';
 import { DataTable } from '@/components/ui/table/data-table';
 import { DataTableColumnHeader } from '@/components/ui/table/data-table-column-header';
+import { DataTableViewOptions } from '@/components/ui/table/data-table-view-options';
 import { ConfirmActionButton } from '@/features/hr/common/confirm-action-button';
+import { SummaryMetricCard } from '@/features/hr/common/summary-metric-card';
 import { cn } from '@/lib/utils';
 
 import {
@@ -39,6 +41,14 @@ type DraftRow = AttendanceBoardData['employees'][number];
 type Result = { ok: true } | { ok: false; error: string };
 
 const WEEKDAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+const DEFAULT_HIDDEN_COLUMNS: VisibilityState = {
+  employeeCode: false,
+  department: false,
+  position: false,
+  shift: false,
+  total: false,
+  standardHours: false
+};
 const CONFLICT_META: Record<AttendanceConflictKind, { label: string; className: string }> = {
   machine: { label: 'Có công máy', className: 'border-slate-200 text-slate-700' },
   overtime: { label: 'Có OT', className: 'border-amber-200 text-amber-700' },
@@ -152,6 +162,7 @@ export function AttendanceBoard({
   const [pendingSaveId, setPendingSaveId] = useState<string | null>(null);
   const [pendingClearId, setPendingClearId] = useState<string | null>(null);
   const [pendingLock, setPendingLock] = useState(false);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(DEFAULT_HIDDEN_COLUMNS);
   const [isRouting, startRouting] = useTransition();
   const [isSaving, startSaving] = useTransition();
 
@@ -355,13 +366,14 @@ export function AttendanceBoard({
         id: 'employee',
         accessorFn: (row) => `${row.employeeCode} ${row.fullName}`,
         header: ({ column }) => <DataTableColumnHeader column={column} title='Nhân sự' />,
+        meta: { label: 'Nhân sự' },
+        enableHiding: false,
         cell: ({ row }) => {
           const record = row.original;
           const isDirty = dirtyRowIds.has(record.id);
           return (
             <div className='min-w-[220px] space-y-1'>
               <div className='font-medium'>{record.fullName}</div>
-              <div className='text-muted-foreground text-xs'>{record.employeeCode}</div>
               <div className='flex flex-wrap gap-1'>
                 {record.conflictCount > 0 ? (
                   <Badge variant='outline' className='border-amber-200 text-amber-700'>
@@ -380,9 +392,20 @@ export function AttendanceBoard({
         size: 260
       },
       {
+        id: 'employeeCode',
+        accessorFn: (row) => row.employeeCode,
+        header: ({ column }) => <DataTableColumnHeader column={column} title='Mã NV' />,
+        meta: { label: 'Mã NV' },
+        cell: ({ row }) => (
+          <span className='text-muted-foreground'>{row.original.employeeCode ?? '—'}</span>
+        ),
+        size: 120
+      },
+      {
         id: 'department',
         accessorFn: (row) => row.departmentName ?? '',
         header: ({ column }) => <DataTableColumnHeader column={column} title='Bộ phận' />,
+        meta: { label: 'Bộ phận' },
         cell: ({ row }) => (
           <span className='text-muted-foreground'>{row.original.departmentName ?? '—'}</span>
         ),
@@ -392,6 +415,7 @@ export function AttendanceBoard({
         id: 'position',
         accessorFn: (row) => row.positionTitle ?? '',
         header: ({ column }) => <DataTableColumnHeader column={column} title='Chức vụ' />,
+        meta: { label: 'Chức vụ' },
         cell: ({ row }) => (
           <span className='text-muted-foreground'>{row.original.positionTitle ?? '—'}</span>
         ),
@@ -401,6 +425,7 @@ export function AttendanceBoard({
         id: 'shift',
         accessorFn: (row) => row.shiftCode ?? row.shiftName ?? '',
         header: ({ column }) => <DataTableColumnHeader column={column} title='Ca làm việc' />,
+        meta: { label: 'Ca làm việc' },
         cell: ({ row }) => {
           const record = row.original;
           return (
@@ -432,6 +457,7 @@ export function AttendanceBoard({
         id: date,
         accessorFn: (row) => countShiftParts({ [date]: row.cells[date] }),
         header: () => <div className='text-center'>{formatDateLabel(date, index)}</div>,
+        enableHiding: false,
         cell: ({ row }) => {
           const record = row.original;
           const cell = copyCell(record.cells[date]);
@@ -499,6 +525,7 @@ export function AttendanceBoard({
         id: 'total',
         accessorFn: (row) => countShiftParts(row.cells) / 2,
         header: ({ column }) => <DataTableColumnHeader column={column} title='Tổng công' />,
+        meta: { label: 'Tổng công' },
         cell: ({ row }) => {
           const shiftParts = countShiftParts(row.original.cells);
           return (
@@ -514,6 +541,7 @@ export function AttendanceBoard({
         id: 'standardHours',
         accessorFn: (row) => (row.standardHours * countShiftParts(row.cells)) / 2,
         header: ({ column }) => <DataTableColumnHeader column={column} title='Giờ chuẩn' />,
+        meta: { label: 'Giờ chuẩn' },
         cell: ({ row }) => {
           const record = row.original;
           const workedHours = ((record.standardHours * countShiftParts(record.cells)) / 2).toFixed(
@@ -534,6 +562,8 @@ export function AttendanceBoard({
         id: 'actions',
         accessorFn: (row) => row.id,
         header: () => <div className='text-right'>Thao tác</div>,
+        meta: { label: 'Thao tác' },
+        enableHiding: false,
         cell: ({ row }) => {
           const record = row.original;
           const isSavingRow = pendingSaveId === record.id && isSaving;
@@ -594,8 +624,9 @@ export function AttendanceBoard({
     data: rows,
     columns,
     state: {
+      columnVisibility,
       columnPinning: {
-        left: ['employee', 'department', 'position', 'shift'],
+        left: ['employee'],
         right: ['actions']
       },
       pagination: {
@@ -617,6 +648,7 @@ export function AttendanceBoard({
         perPage: String(nextPagination.pageSize)
       });
     },
+    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
     pageCount,
@@ -625,7 +657,39 @@ export function AttendanceBoard({
 
   return (
     <div className='space-y-4'>
-      <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-4' data-tour='timesheets-summary'>
+      <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-4'>
+        <SummaryMetricCard
+          label='Tuần công'
+          value={getWeekTitle(weekStart, weekEnd)}
+          helper={weekStart}
+          tone='primary'
+          valueClassName='text-xl @[250px]/card:text-2xl'
+        />
+        <SummaryMetricCard
+          label='Trạng thái tuần'
+          value={<Badge variant={lockStatus.variant}>{lockStatus.label}</Badge>}
+          helper={lockStatus.helper}
+          tone='sky'
+          valueClassName='text-base @[250px]/card:text-lg'
+        />
+        <SummaryMetricCard
+          label='Nhân sự đang hiển thị'
+          value={`${totals.employeesCount}/${totalEmployees}`}
+          helper={`Trang ${page}/${pageCount} theo bộ lọc hiện tại`}
+          tone='emerald'
+        />
+        <SummaryMetricCard
+          label='Cảnh báo dữ liệu'
+          value={totals.conflictCount}
+          helper={`${summary.manualOverrideCount} ngày override · ${summary.approvedLeaveCount} nghỉ phép · ${summary.approvedOtCount} OT`}
+          tone='amber'
+        />
+      </div>
+
+      <div
+        className='hidden grid gap-3 md:grid-cols-2 xl:grid-cols-4'
+        data-tour='timesheets-summary'
+      >
         <div className='rounded-xl border bg-card p-4'>
           <div className='text-muted-foreground text-xs uppercase tracking-wide'>Tuần công</div>
           <div className='mt-2 text-xl font-semibold'>{getWeekTitle(weekStart, weekEnd)}</div>
@@ -782,7 +846,14 @@ export function AttendanceBoard({
         <DataTable
           table={table}
           emptyText='Không có nhân sự phù hợp với bộ lọc hiện tại. Hãy đổi tuần hoặc mở rộng bộ lọc.'
-        />
+        >
+          <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+            <div className='text-muted-foreground text-sm'>
+              Mặc định chỉ hiển thị tên nhân sự. Bật thêm cột khi cần đối chiếu chi tiết.
+            </div>
+            <DataTableViewOptions table={table} />
+          </div>
+        </DataTable>
       </div>
     </div>
   );

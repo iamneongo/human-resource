@@ -284,41 +284,11 @@ export function HrCharts({ data }: { data: HrDashboardData }) {
                       safeChartNumber(entry?.value).toLocaleString('vi-VN')
                   }}
                 />
-                <ChartLegend
-                  content={<ChartLegendContent nameKey='status' />}
-                  className='-translate-y-2 flex-wrap gap-3'
-                />
               </RadialBarChart>
             </ChartContainer>
           ) : (
             <EmptyChart />
           )}
-          {statusData.length ? (
-            <div className='mt-2 flex flex-wrap items-center justify-center gap-2'>
-              <Badge
-                variant='outline'
-                className='gap-1.5 border-border/60 bg-background/70 font-normal'
-              >
-                <Icons.sparkles className='size-3.5 text-primary' />
-                Tổng headcount: {statusTotal.toLocaleString('vi-VN')}
-              </Badge>
-              {statusRadialData.map((item) => (
-                <div
-                  key={item.status}
-                  className='rounded-full border border-border/60 bg-background px-3 py-1.5 text-right'
-                >
-                  <div className='flex items-center gap-2 text-xs font-medium'>
-                    <span
-                      className='size-2 rounded-full'
-                      style={{ backgroundColor: `var(--color-${item.status})` }}
-                    />
-                    <span>{item.label}</span>
-                  </div>
-                  <div className='mt-1 text-sm font-semibold'>{item.score}%</div>
-                </div>
-              ))}
-            </div>
-          ) : null}
         </CardContent>
       </Card>
 

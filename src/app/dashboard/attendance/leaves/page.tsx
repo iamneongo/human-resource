@@ -10,6 +10,7 @@ import { ApprovalActions } from '@/features/hr/common/approval-actions';
 import { EntityFormDialog } from '@/features/hr/common/entity-form-dialog';
 import { departmentOptions, employeeOptions } from '@/features/hr/common/lookups';
 import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
+import { SummaryMetricCard } from '@/features/hr/common/summary-metric-card';
 import { LeaveRequestActions } from '@/features/hr/attendance/leave-request-actions';
 import { LeaveRequestDetailDialog } from '@/features/hr/attendance/leave-request-detail-dialog';
 import {
@@ -241,25 +242,29 @@ export default async function LeavesPage(props: PageProps) {
     >
       <div className='space-y-4'>
         <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-4' data-tour='leaves-summary'>
-          <SummaryCard
+          <SummaryMetricCard
             label='Tổng đơn đang hiển thị'
             value={rows.length}
             helper='Theo bộ lọc hiện tại'
+            tone='primary'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Chờ duyệt'
             value={rows.filter((row) => row.status === 'pending').length}
             helper='Cần quản lý xử lý'
+            tone='amber'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Đã duyệt'
             value={rows.filter((row) => row.status === 'approved').length}
             helper='Đã phản ánh vào phép và cảnh báo công'
+            tone='sky'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Phép năm'
             value={rows.filter((row) => row.type === 'annual').length}
             helper='Theo dõi chặt số dư phép năm'
+            tone='slate'
           />
         </div>
 
@@ -381,15 +386,5 @@ export default async function LeavesPage(props: PageProps) {
         </div>
       </div>
     </PageContainer>
-  );
-}
-
-function SummaryCard({ label, value, helper }: { label: string; value: number; helper: string }) {
-  return (
-    <div className='rounded-xl border bg-card p-4'>
-      <div className='text-muted-foreground text-xs uppercase tracking-wide'>{label}</div>
-      <div className='mt-2 text-2xl font-semibold'>{value}</div>
-      <div className='text-muted-foreground mt-1 text-sm'>{helper}</div>
-    </div>
   );
 }

@@ -1,15 +1,12 @@
 import Link from 'next/link';
 
-import type { SearchParams } from 'nuqs/server';
-
 import { Icons } from '@/components/icons';
 import PageContainer from '@/components/layout/page-container';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
-import { departmentOptions } from '@/features/hr/common/lookups';
 import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
+import { SummaryMetricCard } from '@/features/hr/common/summary-metric-card';
 import { listEmployees } from '@/features/hr/employees/actions';
-import { EmployeesFilters } from '@/features/hr/employees/components/employees-filters';
 import { getCurrentRole, roleAtLeast } from '@/lib/rbac';
 import { cn } from '@/lib/utils';
 
@@ -38,15 +35,7 @@ export const metadata = {
   title: 'HRM: Hồ sơ nhân viên'
 };
 
-type PageProps = {
-  searchParams: Promise<SearchParams>;
-};
-
-function getQueryValue(value: string | string[] | undefined) {
-  return typeof value === 'string' ? value : Array.isArray(value) ? value[0] : '';
-}
-
-export default async function EmployeesPage(props: PageProps) {
+export default async function EmployeesPage() {
   const role = await getCurrentRole();
   const canView = roleAtLeast(role, 'manager');
 
@@ -66,27 +55,8 @@ export default async function EmployeesPage(props: PageProps) {
     );
   }
 
-  const searchParams = await props.searchParams;
-  const departmentId = getQueryValue(searchParams.departmentId);
-  const status = getQueryValue(searchParams.status);
-  const documentStatus = getQueryValue(searchParams.documentStatus);
-  const search = getQueryValue(searchParams.search);
-
-  const [rows, departments] = await Promise.all([
-    listEmployees({ departmentId, status, documentStatus, search }),
-    departmentOptions()
-  ]);
+  const rows = await listEmployees();
   const canCreate = roleAtLeast(role, 'hr');
-
-  const departmentSummary = Array.from(
-    rows.reduce((map, row) => {
-      const key = row.departmentName ?? 'Chưa gán phòng ban';
-      map.set(key, (map.get(key) ?? 0) + 1);
-      return map;
-    }, new Map<string, number>())
-  )
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4);
 
   const columns: Column<Row>[] = [
     {
@@ -149,63 +119,40 @@ export default async function EmployeesPage(props: PageProps) {
     >
       <div className='space-y-4'>
         <div className='grid gap-3 md:grid-cols-4' data-tour='employees-summary'>
-          <SummaryCard
+          <SummaryMetricCard
             label='Tổng nhân sự hiển thị'
             value={String(rows.length)}
-            helper='Theo bộ lọc hiện tại'
+            helper='Theo dữ liệu hiện có'
+            tone='primary'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Đủ hồ sơ'
             value={String(rows.filter((row) => row.documentStatus === 'complete').length)}
             helper='Sẵn sàng trình diễn hồ sơ số hóa'
+            tone='sky'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Thiếu hồ sơ'
             value={String(rows.filter((row) => row.documentStatus === 'missing').length)}
             helper='Cần bổ sung giấy tờ bắt buộc'
+            tone='amber'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Giấy tờ sắp hết hạn'
             value={String(rows.filter((row) => row.documentStatus === 'expiring').length)}
             helper='Case đẹp để demo cảnh báo'
+            tone='rose'
           />
         </div>
-
-        <EmployeesFilters
-          search={search}
-          departmentId={departmentId}
-          status={status}
-          documentStatus={documentStatus}
-          departments={departments}
-          departmentSummary={departmentSummary}
-          statusOptions={Object.entries(STATUS_META).map(([value, meta]) => ({
-            value,
-            label: meta.label
-          }))}
-          documentOptions={Object.entries(DOCUMENT_META).map(([value, meta]) => ({
-            value,
-            label: meta.label
-          }))}
-        />
 
         <div data-tour='employees-table'>
           <SimpleTable
             columns={columns}
             rows={rows}
-            emptyText='Chưa có nhân sự phù hợp với bộ lọc hiện tại. Hãy đổi bộ lọc hoặc thêm nhân sự để tiếp tục demo.'
+            emptyText='Chưa có nhân sự phù hợp. Hãy thêm nhân sự để tiếp tục demo.'
           />
         </div>
       </div>
     </PageContainer>
-  );
-}
-
-function SummaryCard({ label, value, helper }: { label: string; value: string; helper: string }) {
-  return (
-    <div className='rounded-xl border bg-card p-4'>
-      <div className='text-muted-foreground text-xs uppercase tracking-wide'>{label}</div>
-      <div className='mt-2 text-2xl font-semibold'>{value}</div>
-      <div className='text-muted-foreground mt-1 text-sm'>{helper}</div>
-    </div>
   );
 }

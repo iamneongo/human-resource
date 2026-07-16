@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { buttonVariants } from '@/components/ui/button';
 import { departmentOptions, employeeOptions } from '@/features/hr/common/lookups';
 import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
+import { SummaryMetricCard } from '@/features/hr/common/summary-metric-card';
 import { PayslipAccessCodeCell } from '@/features/hr/payroll/payslip-access-code-cell';
 import { listPayslips } from '@/features/hr/payroll/payslips';
 import { PayslipDetailDialog } from '@/features/hr/payroll/payslip-detail-dialog';
@@ -121,25 +122,29 @@ export default async function PayslipsPage(props: PageProps) {
     <PageContainer pageTitle='Phiếu lương'>
       <div className='space-y-4'>
         <div className='grid gap-3 md:grid-cols-4' data-tour='payslips-summary'>
-          <SummaryCard
+          <SummaryMetricCard
             label='Tổng phiếu lương'
             value={filteredRows.length}
             helper='Theo bộ lọc hiện tại'
+            tone='primary'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Bản preview'
             value={filteredRows.filter((row) => row.isPreview).length}
             helper='Dùng để đối chiếu trước khi chốt'
+            tone='amber'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Bản chính thức'
             value={filteredRows.filter((row) => !row.isPreview).length}
             helper='Tạo ra sau khi chốt bảng lương'
+            tone='sky'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Đã phát hành'
             value={filteredRows.filter((row) => Boolean(row.sentAt)).length}
             helper='Phiếu lương đã gửi nội bộ'
+            tone='emerald'
           />
         </div>
 
@@ -222,15 +227,5 @@ export default async function PayslipsPage(props: PageProps) {
         </div>
       </div>
     </PageContainer>
-  );
-}
-
-function SummaryCard({ label, value, helper }: { label: string; value: number; helper: string }) {
-  return (
-    <div className='rounded-xl border bg-card p-4'>
-      <div className='text-muted-foreground text-xs uppercase tracking-wide'>{label}</div>
-      <div className='mt-2 text-2xl font-semibold'>{value}</div>
-      <div className='text-muted-foreground mt-1 text-sm'>{helper}</div>
-    </div>
   );
 }

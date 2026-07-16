@@ -6,6 +6,7 @@ import PageContainer from '@/components/layout/page-container';
 import { buttonVariants } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { SimpleTable, type Column } from '@/features/hr/common/simple-table';
+import { SummaryMetricCard } from '@/features/hr/common/summary-metric-card';
 import { PayslipDetailDialog } from '@/features/hr/payroll/payslip-detail-dialog';
 import { listMyPublishedPayslips } from '@/features/hr/payroll/payslips';
 import { formatVND } from '@/lib/format';
@@ -69,20 +70,25 @@ export default async function MyPayslipsPage(props: PageProps) {
     <PageContainer pageTitle='Phiếu lương của tôi'>
       <div className='space-y-4'>
         <div className='grid gap-3 md:grid-cols-3' data-tour='my-payslips-summary'>
-          <SummaryCard
+          <SummaryMetricCard
             label='Phiếu đã phát hành'
             value={allRows.length}
             helper='Chỉ hiển thị các phiếu chính thức đã phát hành nội bộ'
+            tone='emerald'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Kỳ gần nhất'
             value={rows[0]?.period ?? '—'}
             helper='Dễ truy cập nhanh phiếu mới nhất'
+            tone='primary'
+            valueClassName='text-xl @[250px]/card:text-2xl'
           />
-          <SummaryCard
+          <SummaryMetricCard
             label='Tra cứu ngoài app'
             value='Có hỗ trợ'
             helper='HR có thể cấp mã xem nhanh khi không đăng nhập hệ thống'
+            tone='sky'
+            valueClassName='text-xl @[250px]/card:text-2xl'
           />
         </div>
 
@@ -128,23 +134,5 @@ export default async function MyPayslipsPage(props: PageProps) {
         </div>
       </div>
     </PageContainer>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  helper
-}: {
-  label: string;
-  value: string | number;
-  helper: string;
-}) {
-  return (
-    <div className='rounded-xl border bg-card p-4'>
-      <div className='text-muted-foreground text-xs uppercase tracking-wide'>{label}</div>
-      <div className='mt-2 text-2xl font-semibold'>{value}</div>
-      <div className='text-muted-foreground mt-1 text-sm'>{helper}</div>
-    </div>
   );
 }
