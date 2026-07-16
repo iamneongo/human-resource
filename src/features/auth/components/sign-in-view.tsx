@@ -1,8 +1,9 @@
 import Image from 'next/image';
-import { buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { Metadata } from 'next';
 import Link from 'next/link';
+
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 import { InteractiveGridPattern } from './interactive-grid';
 import { PasswordSignInForm } from './password-sign-in-form';
@@ -24,39 +25,45 @@ export default function SignInViewPage() {
       >
         Cấp tài khoản
       </Link>
-      <div className='relative hidden h-full flex-col p-10 lg:flex dark:border-r'>
+
+      <div className='relative hidden h-full flex-col justify-between overflow-hidden p-10 lg:flex dark:border-r'>
         <div className='absolute inset-0 bg-sidebar' />
-        <div className='text-sidebar-foreground relative z-20 flex items-center gap-3 text-lg font-medium'>
-          <div className='bg-sidebar-primary/8 ring-sidebar-primary/12 flex size-12 shrink-0 items-center justify-center rounded-2xl ring-1'>
-            <Image
-              src='/brand/app-logo.png'
-              alt='Nhân sự HRM'
-              width={36}
-              height={36}
-              className='size-9 object-contain'
-              priority
-            />
-          </div>
-          <div className='space-y-0.5'>
-            <div className='text-xl font-semibold'>Nhân sự HRM</div>
-            <div className='text-sidebar-foreground/70 text-sm'>
+        <InteractiveGridPattern
+          className={cn(
+            'mask-[radial-gradient(420px_circle_at_center,white,transparent)]',
+            'inset-x-0 inset-y-[0%] h-full skew-y-12'
+          )}
+        />
+
+        <div className='relative z-20 h-8' />
+
+        <div className='text-sidebar-foreground relative z-20 flex flex-1 items-center justify-center px-10'>
+          <div className='flex max-w-md flex-col items-center text-center'>
+            <div className='bg-sidebar-primary/10 ring-sidebar-primary/15 mb-6 flex size-28 items-center justify-center rounded-[2rem] ring-1 backdrop-blur-sm'>
+              <Image
+                src='/brand/app-logo.png'
+                alt='Nhân sự HRM'
+                width={92}
+                height={92}
+                className='size-24 object-contain'
+                priority
+              />
+            </div>
+            <div className='text-3xl font-semibold tracking-tight'>Nhân sự HRM</div>
+            <div className='text-sidebar-foreground/75 mt-2 text-base'>
               Hệ thống quản lý nguồn nhân lực
             </div>
           </div>
         </div>
-        <InteractiveGridPattern
-          className={cn(
-            'mask-[radial-gradient(400px_circle_at_center,white,transparent)]',
-            'inset-x-0 inset-y-[0%] h-full skew-y-12'
-          )}
-        />
-        <div className='text-sidebar-foreground relative z-20 mt-auto'>
+
+        <div className='text-sidebar-foreground relative z-20'>
           <blockquote className='space-y-2'>
             <p className='text-lg'>&ldquo;Nền tảng vận hành nhân sự nội bộ của công ty.&rdquo;</p>
             <footer className='text-sidebar-foreground/70 text-sm'>Nhân sự HRM</footer>
           </blockquote>
         </div>
       </div>
+
       <div className='flex h-full items-center justify-center p-4 lg:p-8'>
         <div className='flex w-full max-w-md flex-col items-center justify-center space-y-6'>
           <div className='flex flex-col items-center gap-3 lg:hidden'>
@@ -75,7 +82,9 @@ export default function SignInViewPage() {
               <p className='text-muted-foreground text-sm'>Đăng nhập vào không gian làm việc</p>
             </div>
           </div>
+
           <PasswordSignInForm />
+
           <p className='text-muted-foreground px-8 text-center text-sm'>
             Khi tiếp tục, bạn đồng ý với{' '}
             <Link
